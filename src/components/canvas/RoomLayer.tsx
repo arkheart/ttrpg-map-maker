@@ -107,42 +107,51 @@ export function RoomLayer({ rooms, caves, onSelect, selectedId }: Props) {
         )
       })}
 
-      {caves.map(c => (
-        <>
-          <Line
-            key={c.id}
-            id={c.id}
-            points={c.points}
-            fill={c.fill}
-            stroke={selectedId === c.id ? '#00aaff' : '#aaa'}
-            strokeWidth={selectedId === c.id ? 3 : 2}
-            closed
-            draggable={draggable}
-            onClick={() => onSelect(c.id)}
-            onDragEnd={e => {
-              dispatch({
-                type: 'UPDATE_CAVE',
-                payload: { id: c.id, points: c.points.map((p, i) =>
-                  i % 2 === 0 ? p + e.target.x() : p + e.target.y()
-                )},
-              })
-              e.target.position({ x: 0, y: 0 })
-            }}
-          />
-          {c.grid && <PolyGrid key={`${c.id}-grid`} grid={c.grid} points={c.points} />}
-          {c.label && (
-            <Text
-              key={`${c.id}-label`}
-              x={c.points[0]}
-              y={c.points[1]}
-              text={c.label}
-              fontSize={13}
-              fill="#fff"
-              listening={false}
+      {caves.map(c => {
+        const cxs = c.points.filter((_, i) => i % 2 === 0)
+        const cys = c.points.filter((_, i) => i % 2 !== 0)
+        const ccx = cxs.reduce((a, b) => a + b, 0) / cxs.length
+        const ccy = cys.reduce((a, b) => a + b, 0) / cys.length
+        const spanX = Math.max(...cxs) - Math.min(...cxs)
+        return (
+          <>
+            <Line
+              key={c.id}
+              id={c.id}
+              points={c.points}
+              fill={c.fill}
+              stroke={selectedId === c.id ? '#00aaff' : '#aaa'}
+              strokeWidth={selectedId === c.id ? 3 : 2}
+              closed
+              draggable={draggable}
+              onClick={() => onSelect(c.id)}
+              onDragEnd={e => {
+                dispatch({
+                  type: 'UPDATE_CAVE',
+                  payload: { id: c.id, points: c.points.map((p, i) =>
+                    i % 2 === 0 ? p + e.target.x() : p + e.target.y()
+                  )},
+                })
+                e.target.position({ x: 0, y: 0 })
+              }}
             />
-          )}
-        </>
-      ))}
+            {c.grid && <PolyGrid key={`${c.id}-grid`} grid={c.grid} points={c.points} />}
+            {c.label && (
+              <Text
+                key={`${c.id}-label`}
+                x={ccx - spanX / 2}
+                y={ccy - 7}
+                width={spanX}
+                text={c.label}
+                fontSize={13}
+                fill="#fff"
+                align="center"
+                listening={false}
+              />
+            )}
+          </>
+        )
+      })}
     </Layer>
   )
 }

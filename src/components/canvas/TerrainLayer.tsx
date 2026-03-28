@@ -42,8 +42,8 @@ export function TerrainLayer({ terrain, onSelect, selectedId }: Props) {
                 onDragEnd={e => dispatch({ type: 'UPDATE_TERRAIN', payload: { id: t.id, x: e.target.x(), y: e.target.y() } })}
               />
               {t.grid && <RectGrid key={`${t.id}-grid`} grid={t.grid} x={t.x} y={t.y} width={t.width} height={t.height} />}
-              <Text key={`${t.id}-i`} x={t.x + 4} y={t.y + 4} text={def.icon} fontSize={14} listening={false} />
-              {t.label && <Text key={`${t.id}-l`} x={t.x + 4} y={t.y + 22} text={t.label} fontSize={11} fill="#ddd" listening={false} />}
+              <Text key={`${t.id}-i`} x={t.x + t.width / 2} y={t.y + t.height / 2 - (t.label ? 12 : 8)} text={def.icon} fontSize={14} align="center" offsetX={7} listening={false} />
+              {t.label && <Text key={`${t.id}-l`} x={t.x} y={t.y + t.height / 2 + 6} width={t.width} text={t.label} fontSize={11} fill="#ddd" align="center" listening={false} />}
             </>
           )
         }
@@ -61,18 +61,18 @@ export function TerrainLayer({ terrain, onSelect, selectedId }: Props) {
                 onDragEnd={e => dispatch({ type: 'UPDATE_TERRAIN', payload: { id: t.id, x: e.target.x(), y: e.target.y() } })}
               />
               {t.grid && <EllipseGrid key={`${t.id}-grid`} grid={t.grid} cx={t.x} cy={t.y} radiusX={t.radiusX} radiusY={t.radiusY} />}
-              <Text key={`${t.id}-i`} x={t.x - 8} y={t.y - 10} text={def.icon} fontSize={14} listening={false} />
-              {t.label && <Text key={`${t.id}-l`} x={t.x - t.radiusX} y={t.y - t.radiusY + 4} text={t.label} fontSize={11} fill="#ddd" listening={false} />}
+              <Text key={`${t.id}-i`} x={t.x} y={t.y - (t.label ? 12 : 8)} text={def.icon} fontSize={14} align="center" offsetX={7} listening={false} />
+              {t.label && <Text key={`${t.id}-l`} x={t.x - t.radiusX} y={t.y + 6} width={t.radiusX * 2} text={t.label} fontSize={11} fill="#ddd" align="center" listening={false} />}
             </>
           )
         }
 
         if (t.shape === 'custom') {
-          // Bounding box top-left for icon/label placement
           const xs = t.points.filter((_, i) => i % 2 === 0)
           const ys = t.points.filter((_, i) => i % 2 !== 0)
-          const minX = Math.min(...xs)
-          const minY = Math.min(...ys)
+          const cx = xs.reduce((a, b) => a + b, 0) / xs.length
+          const cy = ys.reduce((a, b) => a + b, 0) / ys.length
+          const spanX = Math.max(...xs) - Math.min(...xs)
           return (
             <>
               <Line
@@ -91,8 +91,8 @@ export function TerrainLayer({ terrain, onSelect, selectedId }: Props) {
                 }}
               />
               {t.grid && <PolyGrid key={`${t.id}-grid`} grid={t.grid} points={t.points} />}
-              <Text key={`${t.id}-i`} x={minX + 4} y={minY + 4} text={def.icon} fontSize={14} listening={false} />
-              {t.label && <Text key={`${t.id}-l`} x={minX + 4} y={minY + 22} text={t.label} fontSize={11} fill="#ddd" listening={false} />}
+              <Text key={`${t.id}-i`} x={cx} y={cy - (t.label ? 12 : 8)} text={def.icon} fontSize={14} align="center" offsetX={7} listening={false} />
+              {t.label && <Text key={`${t.id}-l`} x={cx - spanX / 2} y={cy + 6} width={spanX} text={t.label} fontSize={11} fill="#ddd" align="center" listening={false} />}
             </>
           )
         }
