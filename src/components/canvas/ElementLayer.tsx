@@ -89,11 +89,14 @@ function EllipseHandles({ cx, cy, radiusX, radiusY, onLive, onCommit }: {
 }
 
 // Handles for polygon/custom shapes — one handle per vertex
+// Alt+click a handle removes that vertex (min 3).
+// Alt+click on the Line (handled in element) inserts a vertex.
 function PolyHandles({ points, onLive, onCommit }: {
   points: number[]
   onLive: (points: number[]) => void
   onCommit: (points: number[]) => void
 }) {
+  const canRemove = points.length / 2 > 3
   return (
     <>
       {Array.from({ length: points.length / 2 }, (_, i) => {
@@ -114,6 +117,14 @@ function PolyHandles({ points, onLive, onCommit }: {
             stroke={HANDLE_STROKE}
             strokeWidth={2}
             draggable
+            onClick={e => {
+              if (e.evt.altKey && canRemove) {
+                e.cancelBubble = true
+                const newPoints = [...points]
+                newPoints.splice(i * 2, 2)
+                onCommit(newPoints)
+              }
+            }}
             onDragMove={e => onLive(update(e.target.x(), e.target.y()))}
             onDragEnd={e => {
               onCommit(update(e.target.x(), e.target.y()))
@@ -124,6 +135,28 @@ function PolyHandles({ points, onLive, onCommit }: {
       })}
     </>
   )
+}
+
+// Given a flat points array and a click position, find the closest edge
+// and return a new points array with the new vertex spliced in.
+function insertPointOnEdge(points: number[], px: number, py: number): number[] {
+  const n = points.length / 2
+  let bestDist = Infinity
+  let bestEdge = 0
+  for (let i = 0; i < n; i++) {
+    const ax = points[i * 2],     ay = points[i * 2 + 1]
+    const bx = points[((i + 1) % n) * 2], by = points[((i + 1) % n) * 2 + 1]
+    const dx = bx - ax, dy = by - ay
+    const lenSq = dx * dx + dy * dy
+    const t = lenSq === 0 ? 0 : Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / lenSq))
+    const cx = ax + t * dx, cy = ay + t * dy
+    const dist = Math.hypot(px - cx, py - cy)
+    if (dist < bestDist) { bestDist = dist; bestEdge = i }
+  }
+  const insertAfter = (bestEdge + 1) % n
+  const newPoints = [...points]
+  newPoints.splice(insertAfter * 2, 0, px, py)
+  return newPoints
 }
 
 interface Props {
@@ -214,6 +247,19 @@ function TerrainElement({ t, isSelected, onSelect, draggable, editMode, dispatch
       <Line
         id={t.id} points={d.points} fill={def.fill} stroke={stroke} strokeWidth={strokeWidth} closed
         {...shared}
+        onClick={e => {
+          if (showHandles && e.evt.altKey) {
+            const stage = e.target.getStage()!
+            const pt = stage.getPointerPosition()!
+            const px = (pt.x - stage.x()) / stage.scaleX()
+            const py = (pt.y - stage.y()) / stage.scaleY()
+            const newPts = insertPointOnEdge(d.points, px, py)
+            setDraft(prev => ({ ...prev, points: newPts }))
+            dispatch({ type: 'UPDATE_TERRAIN', payload: { id: t.id, points: newPts } })
+          } else {
+            onSelect()
+          }
+        }}
         onDragEnd={e => {
           dispatch({ type: 'UPDATE_TERRAIN', payload: { id: t.id, points: t.points.map((p, i) => i % 2 === 0 ? p + e.target.x() : p + e.target.y()) } })
           e.target.position({ x: 0, y: 0 })
@@ -270,6 +316,19 @@ function RoomElement({ r, isSelected, onSelect, draggable, editMode, dispatch }:
         <Line
           id={r.id} points={d.points} fill={r.fill} stroke={stroke} strokeWidth={strokeWidth} closed
           {...shared}
+          onClick={e => {
+            if (showHandles && e.evt.altKey) {
+              const stage = e.target.getStage()!
+              const pt = stage.getPointerPosition()!
+              const px = (pt.x - stage.x()) / stage.scaleX()
+              const py = (pt.y - stage.y()) / stage.scaleY()
+              const newPts = insertPointOnEdge(d.points, px, py)
+              setDraft(prev => ({ ...prev, points: newPts }))
+              dispatch({ type: 'UPDATE_ROOM', payload: { id: r.id, points: newPts } })
+            } else {
+              onSelect()
+            }
+          }}
           onDragEnd={e => {
             dispatch({ type: 'UPDATE_ROOM', payload: { id: r.id, points: r.points.map((p, i) => i % 2 === 0 ? p + e.target.x() : p + e.target.y()) } })
             e.target.position({ x: 0, y: 0 })
@@ -334,7 +393,19 @@ function CaveElement({ c, isSelected, onSelect, draggable, editMode, dispatch }:
         stroke={isSelected ? '#00aaff' : '#aaa'}
         strokeWidth={isSelected ? 3 : 2}
         closed draggable={draggable}
-        onClick={onSelect}
+        onClick={e => {
+          if (showHandles && e.evt.altKey) {
+            const stage = e.target.getStage()!
+            const pt = stage.getPointerPosition()!
+            const px = (pt.x - stage.x()) / stage.scaleX()
+            const py = (pt.y - stage.y()) / stage.scaleY()
+            const newPts = insertPointOnEdge(d.points, px, py)
+            setDraft(prev => ({ ...prev, points: newPts }))
+            dispatch({ type: 'UPDATE_CAVE', payload: { id: c.id, points: newPts } })
+          } else {
+            onSelect()
+          }
+        }}
         onDragEnd={e => {
           dispatch({ type: 'UPDATE_CAVE', payload: { id: c.id, points: c.points.map((p, i) => i % 2 === 0 ? p + e.target.x() : p + e.target.y()) } })
           e.target.position({ x: 0, y: 0 })
