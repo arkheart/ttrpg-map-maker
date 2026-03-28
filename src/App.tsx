@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Toolbar } from '@/components/toolbar/Toolbar'
 import { MapCanvas } from '@/components/canvas/MapCanvas'
 import { Sidebar } from '@/components/sidebar/Sidebar'
-import { MapStateContext, MapDispatchContext, useMapReducer } from '@/store/mapStore'
+import { MapStateContext, MapDispatchContext, useMapReducer, saveState } from '@/store/mapStore'
 import { MapToolContext, useMapToolState } from '@/hooks/useMapTool'
 import type { SelectedElement } from '@/types/map'
 
@@ -10,6 +10,10 @@ export default function App() {
   const [state, dispatch] = useMapReducer()
   const toolState = useMapToolState()
   const [selectedElement, setSelectedElement] = useState<SelectedElement | null>(null)
+
+  useEffect(() => {
+    saveState(state)
+  }, [state])
 
   return (
     <MapStateContext.Provider value={state}>

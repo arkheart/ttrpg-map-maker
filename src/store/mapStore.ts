@@ -1,4 +1,22 @@
 import { createContext, useContext, useReducer, Dispatch } from 'react'
+const STORAGE_KEY = 'ttrpg-map-state'
+
+export function loadState(): MapState | undefined {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    return raw ? (JSON.parse(raw) as MapState) : undefined
+  } catch {
+    return undefined
+  }
+}
+
+export function saveState(state: MapState) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+  } catch {
+    // storage quota exceeded — silently ignore
+  }
+}
 import type { MapState, MapRoom, MapCave, MapTerrain, MapItem, TerrainType } from '@/types/map'
 
 type Action =
@@ -66,6 +84,7 @@ function mapReducer(state: MapState, action: Action): MapState {
         items: state.items.filter(i => i.id !== action.payload.id),
       }
     case 'CLEAR_ALL':
+      localStorage.removeItem('ttrpg-map-state')
       return initialState
     default:
       return state
@@ -84,5 +103,5 @@ export function useMapDispatch() {
 }
 
 export function useMapReducer() {
-  return useReducer(mapReducer, initialState)
+  return useReducer(mapReducer, undefined, () => loadState() ?? initialState)
 }
