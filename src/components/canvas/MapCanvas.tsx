@@ -254,7 +254,7 @@ export const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas({
       return
     }
 
-    if (activeTool === 'select' && onStage) { onSelect(null); return }
+    if ((activeTool === 'select' || activeTool === 'edit') && onStage) { onSelect(null); return }
 
     if (activeTool === 'erase' && !onStage) {
       const id = e.target.id()
@@ -344,7 +344,7 @@ export const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas({
 
   const handleSelect = (type: SelectedElement['type'], id: string) => {
     if (activeTool === 'erase') dispatch({ type: 'DELETE_ELEMENT', payload: { id } })
-    else if (activeTool === 'select') onSelect({ type, id })
+    else if (activeTool === 'select' || activeTool === 'edit') onSelect({ type, id })
   }
 
   useImperativeHandle(ref, () => ({
@@ -439,7 +439,7 @@ export const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas({
         onDblClick={handleDblClick}
         onMouseLeave={handleMouseLeave}
         onWheel={handleWheel}
-        style={{ cursor: ctrlHeld ? (panStart.current ? 'grabbing' : 'grab') : activeTool === 'select' ? 'default' : nearFirst_ ? 'cell' : 'crosshair' }}
+        style={{ cursor: ctrlHeld ? (panStart.current ? 'grabbing' : 'grab') : (activeTool === 'select' || activeTool === 'edit') ? 'default' : nearFirst_ ? 'cell' : 'crosshair' }}
       >
         {state.layerOrder.map(id => {
           const room = state.rooms.find(r => r.id === id)

@@ -1,4 +1,4 @@
-export type ToolType = 'select' | 'room' | 'cave' | 'terrain' | 'item' | 'erase'
+export type ToolType = 'select' | 'edit' | 'room' | 'cave' | 'terrain' | 'item' | 'erase'
 
 export type CaveDrawMode = 'polygon' | 'paint'
 

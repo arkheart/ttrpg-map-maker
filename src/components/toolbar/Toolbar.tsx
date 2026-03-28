@@ -18,6 +18,7 @@ const CAVE_MODES: { mode: CaveDrawMode; label: string; icon: string }[] = [
 
 const TOOLS: { tool: ToolType; label: string; icon: string }[] = [
   { tool: 'select',  label: 'Select',  icon: '↖'  },
+  { tool: 'edit',    label: 'Edit',    icon: '⬡'  },
   { tool: 'room',    label: 'Room',    icon: '⬜'  },
   { tool: 'cave',    label: 'Cave',    icon: '🪨'  },
   { tool: 'terrain', label: 'Terrain', icon: '🌿'  },
