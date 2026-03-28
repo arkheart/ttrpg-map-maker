@@ -88,6 +88,7 @@ function mapReducer(state: MapState, action: Action): MapState {
       }
     case 'DELETE_ELEMENT':
       return {
+        ...state,
         rooms: state.rooms.filter(r => r.id !== action.payload.id),
         caves: state.caves.filter(c => c.id !== action.payload.id),
         terrain: state.terrain.filter(t => t.id !== action.payload.id),

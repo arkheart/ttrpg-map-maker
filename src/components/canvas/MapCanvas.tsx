@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { Stage } from 'react-konva'
 import type { KonvaEventObject } from 'konva/lib/Node'
 import type Konva from 'konva'
@@ -43,6 +43,16 @@ export function MapCanvas({ selectedElement, onSelect }: Props) {
   // Viewport state
   const [scale, setScale] = useState(1)
   const [stagePos, setStagePos] = useState({ x: 0, y: 0 })
+  const panStart = useRef<{ screenX: number; screenY: number; stageX: number; stageY: number } | null>(null)
+  const [ctrlHeld, setCtrlHeld] = useState(false)
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => { if (e.key === 'Control') setCtrlHeld(true) }
+    const onKeyUp = (e: KeyboardEvent) => { if (e.key === 'Control') { setCtrlHeld(false); panStart.current = null } }
+    window.addEventListener('keydown', onKeyDown)
+    window.addEventListener('keyup', onKeyUp)
+    return () => { window.removeEventListener('keydown', onKeyDown); window.removeEventListener('keyup', onKeyUp) }
+  }, [])
 
   // Drag-draw state (room, terrain rect/ellipse)
   const [dragStart, setDragStart] = useState<DragStart | null>(null)
@@ -84,6 +94,16 @@ export function MapCanvas({ selectedElement, onSelect }: Props) {
   // ── Mouse move ─────────────────────────────────────────────────
 
   const handleMouseMove = (e: KonvaEventObject<MouseEvent>) => {
+    if (panStart.current) {
+      const stage = e.target.getStage()!
+      const pointer = stage.getPointerPosition()!
+      setStagePos({
+        x: panStart.current.stageX + (pointer.x - panStart.current.screenX),
+        y: panStart.current.stageY + (pointer.y - panStart.current.screenY),
+      })
+      return
+    }
+
     const pos = getPos(e)
 
     if (activeTool === 'cave' || (activeTool === 'terrain' && terrainDrawMode === 'custom')) {
@@ -177,6 +197,13 @@ export function MapCanvas({ selectedElement, onSelect }: Props) {
   // ── Mouse down / up (drag tools) ───────────────────────────────
 
   const handleMouseDown = (e: KonvaEventObject<MouseEvent>) => {
+    if (e.evt.ctrlKey) {
+      const stage = e.target.getStage()!
+      const pointer = stage.getPointerPosition()!
+      panStart.current = { screenX: pointer.x, screenY: pointer.y, stageX: stagePos.x, stageY: stagePos.y }
+      return
+    }
+
     const isDragTool =
       activeTool === 'room' ||
       (activeTool === 'terrain' && (terrainDrawMode === 'rect' || terrainDrawMode === 'ellipse'))
@@ -189,6 +216,7 @@ export function MapCanvas({ selectedElement, onSelect }: Props) {
   }
 
   const handleMouseUp = (_e: KonvaEventObject<MouseEvent>) => {
+    if (panStart.current) { panStart.current = null; return }
     if (!dragStart || !previewRect) return
     const { x, y, w, h } = previewRect
 
@@ -234,7 +262,7 @@ export function MapCanvas({ selectedElement, onSelect }: Props) {
         onDblClick={handleDblClick}
         onMouseLeave={handleMouseLeave}
         onWheel={handleWheel}
-        style={{ cursor: activeTool === 'select' ? 'default' : nearFirst_ ? 'cell' : 'crosshair' }}
+        style={{ cursor: ctrlHeld ? (panStart.current ? 'grabbing' : 'grab') : activeTool === 'select' ? 'default' : nearFirst_ ? 'cell' : 'crosshair' }}
       >
         <TerrainLayer
           terrain={state.terrain}
