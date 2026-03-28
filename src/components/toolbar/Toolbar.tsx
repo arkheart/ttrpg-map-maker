@@ -75,11 +75,12 @@ interface ToolbarProps {
   onNewMap?: () => void
   onOpenMaps?: () => void
   onOpenObjects?: () => void
+  onOpenHelp?: () => void
   currentMapName?: string
   currentMapId?: string
 }
 
-export function Toolbar({ onExportPng, onSaveMap, onNewMap, onOpenMaps, onOpenObjects, currentMapName, currentMapId }: ToolbarProps) {
+export function Toolbar({ onExportPng, onSaveMap, onNewMap, onOpenMaps, onOpenObjects, onOpenHelp, currentMapName, currentMapId }: ToolbarProps) {
   const { activeTool, setActiveTool, activeTerrainType, setActiveTerrainType, terrainDrawMode, setTerrainDrawMode, roomDrawMode, setRoomDrawMode, caveDrawMode, setCaveDrawMode } = useMapTool()
   const dispatch = useMapDispatch()
   const { globalGrid } = useMapState()
@@ -255,6 +256,20 @@ export function Toolbar({ onExportPng, onSaveMap, onNewMap, onOpenMaps, onOpenOb
           style={{ padding: '5px 12px', background: '#5a2020', color: '#fff', border: '1px solid #8a3030', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}
         >
           Clear All
+        </button>
+
+        <div style={{ width: '1px', height: '20px', background: '#444', margin: '0 4px' }} />
+
+        <button
+          onClick={onOpenHelp}
+          title="Help & Controls"
+          style={{
+            padding: '4px 9px', background: '#2a2a2a', color: '#aaa',
+            border: '1px solid #444', borderRadius: '4px', cursor: 'pointer',
+            fontSize: '13px', fontWeight: 700, lineHeight: 1,
+          }}
+        >
+          ?
         </button>
       </div>
 

@@ -9,6 +9,7 @@ import type { SelectedElement } from '@/types/map'
 import { MapsPanel } from '@/components/maps/MapsPanel'
 import { ObjectsPanel } from '@/components/objects/ObjectsPanel'
 import { DevMenu } from '@/components/dev/DevMenu'
+import { HelpModal } from '@/components/help/HelpModal'
 
 export default function App() {
   const [state, dispatch] = useMapReducer()
@@ -20,6 +21,7 @@ export default function App() {
   const [currentMapName, setCurrentMapName] = useState<string>(() => loadCurrentMapMeta()?.name ?? 'Untitled Map')
   const [showMapsPanel, setShowMapsPanel] = useState(false)
   const [showObjectsPanel, setShowObjectsPanel] = useState(false)
+  const [showHelp, setShowHelp] = useState(false)
 
   useEffect(() => {
     saveState(state)
@@ -95,6 +97,7 @@ export default function App() {
               onNewMap={handleNewMap}
               onOpenMaps={() => setShowMapsPanel(v => !v)}
             onOpenObjects={() => setShowObjectsPanel(v => !v)}
+              onOpenHelp={() => setShowHelp(true)}
               currentMapName={currentMapName}
               currentMapId={currentMapId}
             />
@@ -122,6 +125,7 @@ export default function App() {
             </div>
           </div>
           <DevMenu onClearAll={handleNewMap} />
+          {showHelp && <HelpModal onClose={() => setShowHelp(false)} />}
         </MapToolContext.Provider>
       </MapDispatchContext.Provider>
     </MapStateContext.Provider>
