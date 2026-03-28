@@ -66,6 +66,7 @@ export interface MapState {
   terrain: MapTerrain[]
   items: MapItem[]
   globalGrid: GridSettings
+  layerOrder: string[] // IDs bottom→top render order
 }
 
 export interface SelectedElement {

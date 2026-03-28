@@ -73,11 +73,12 @@ interface ToolbarProps {
   onSaveMap?: (name: string) => void
   onNewMap?: () => void
   onOpenMaps?: () => void
+  onOpenObjects?: () => void
   currentMapName?: string
   currentMapId?: string
 }
 
-export function Toolbar({ onExportPng, onSaveMap, onNewMap, onOpenMaps, currentMapName, currentMapId }: ToolbarProps) {
+export function Toolbar({ onExportPng, onSaveMap, onNewMap, onOpenMaps, onOpenObjects, currentMapName, currentMapId }: ToolbarProps) {
   const { activeTool, setActiveTool, activeTerrainType, setActiveTerrainType, terrainDrawMode, setTerrainDrawMode, roomDrawMode, setRoomDrawMode, caveDrawMode, setCaveDrawMode } = useMapTool()
   const dispatch = useMapDispatch()
   const { globalGrid } = useMapState()
@@ -134,6 +135,16 @@ export function Toolbar({ onExportPng, onSaveMap, onNewMap, onOpenMaps, currentM
         {TOOLS.map(({ tool, label, icon }) => (
           <ToolButton key={tool} icon={icon} label={label} active={activeTool === tool} onClick={() => setActiveTool(tool)} />
         ))}
+
+        <div style={{ width: '1px', height: '24px', background: '#444', margin: '0 6px' }} />
+
+        <button
+          onClick={onOpenObjects}
+          title="Objects panel"
+          style={{ padding: '4px 10px', background: '#2a2a2a', color: '#bbb', border: '1px solid #444', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}
+        >
+          Objects
+        </button>
 
         <div style={{ width: '1px', height: '24px', background: '#444', margin: '0 6px' }} />
 

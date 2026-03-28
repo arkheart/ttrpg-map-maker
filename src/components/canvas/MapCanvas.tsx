@@ -2,10 +2,8 @@ import { useRef, useState, useEffect, useImperativeHandle, forwardRef } from 're
 import { Stage } from 'react-konva'
 import type { KonvaEventObject } from 'konva/lib/Node'
 import type Konva from 'konva'
-import { TerrainLayer } from './TerrainLayer'
+import { ElementLayer } from './ElementLayer'
 import { TerrainDrawLayer } from './TerrainDrawLayer'
-import { RoomLayer } from './RoomLayer'
-import { ItemLayer } from './ItemLayer'
 import { CaveDrawLayer, PaintCaveDrawLayer } from './CaveDrawLayer'
 import { GlobalGridLayer } from './GlobalGridLayer'
 import { useMapState, useMapDispatch } from '@/store/mapStore'
@@ -443,22 +441,17 @@ export const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas({
         onWheel={handleWheel}
         style={{ cursor: ctrlHeld ? (panStart.current ? 'grabbing' : 'grab') : activeTool === 'select' ? 'default' : nearFirst_ ? 'cell' : 'crosshair' }}
       >
-        <TerrainLayer
-          terrain={state.terrain}
-          onSelect={id => handleSelect('terrain', id)}
-          selectedId={selectedElement?.type === 'terrain' ? selectedElement.id : null}
-        />
-        <RoomLayer
-          rooms={state.rooms}
-          caves={state.caves}
-          onSelect={id => handleSelect(state.rooms.some(r => r.id === id) ? 'room' : 'cave', id)}
-          selectedId={selectedElement?.type === 'room' || selectedElement?.type === 'cave' ? selectedElement.id : null}
-        />
-        <ItemLayer
-          items={state.items}
-          onSelect={id => handleSelect('item', id)}
-          selectedId={selectedElement?.type === 'item' ? selectedElement.id : null}
-        />
+        {state.layerOrder.map(id => {
+          const room = state.rooms.find(r => r.id === id)
+          if (room) return <ElementLayer key={id} element={room} type="room" isSelected={selectedElement?.id === id} onSelect={() => handleSelect('room', id)} />
+          const cave = state.caves.find(c => c.id === id)
+          if (cave) return <ElementLayer key={id} element={cave} type="cave" isSelected={selectedElement?.id === id} onSelect={() => handleSelect('cave', id)} />
+          const terrain = state.terrain.find(t => t.id === id)
+          if (terrain) return <ElementLayer key={id} element={terrain} type="terrain" isSelected={selectedElement?.id === id} onSelect={() => handleSelect('terrain', id)} />
+          const item = state.items.find(i => i.id === id)
+          if (item) return <ElementLayer key={id} element={item} type="item" isSelected={selectedElement?.id === id} onSelect={() => handleSelect('item', id)} />
+          return null
+        })}
         <GlobalGridLayer width={width} height={height} scale={scale} stagePos={stagePos} grid={state.globalGrid} />
         <CaveDrawLayer points={cavePoints} mousePos={activeTool === 'cave' && caveDrawMode === 'polygon' ? mousePos : null} />
         <PaintCaveDrawLayer points={activeTool === 'cave' && caveDrawMode === 'paint' ? paintPreview : []} />

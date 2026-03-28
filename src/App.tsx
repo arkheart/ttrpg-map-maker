@@ -7,6 +7,7 @@ import type { SavedMapEntry } from '@/store/mapStore'
 import { MapToolContext, useMapToolState } from '@/hooks/useMapTool'
 import type { SelectedElement } from '@/types/map'
 import { MapsPanel } from '@/components/maps/MapsPanel'
+import { ObjectsPanel } from '@/components/objects/ObjectsPanel'
 
 export default function App() {
   const [state, dispatch] = useMapReducer()
@@ -17,6 +18,7 @@ export default function App() {
   const [currentMapId, setCurrentMapId] = useState<string | undefined>(() => loadCurrentMapMeta()?.id)
   const [currentMapName, setCurrentMapName] = useState<string>(() => loadCurrentMapMeta()?.name ?? 'Untitled Map')
   const [showMapsPanel, setShowMapsPanel] = useState(false)
+  const [showObjectsPanel, setShowObjectsPanel] = useState(false)
 
   useEffect(() => {
     saveState(state)
@@ -72,12 +74,20 @@ export default function App() {
               onSaveMap={handleSaveMap}
               onNewMap={handleNewMap}
               onOpenMaps={() => setShowMapsPanel(v => !v)}
+            onOpenObjects={() => setShowObjectsPanel(v => !v)}
               currentMapName={currentMapName}
               currentMapId={currentMapId}
             />
             <div style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative' }}>
               <MapCanvas ref={canvasRef} selectedElement={selectedElement} onSelect={setSelectedElement} />
               <Sidebar selected={selectedElement} />
+              {showObjectsPanel && (
+                <ObjectsPanel
+                  selected={selectedElement}
+                  onSelect={setSelectedElement}
+                  onClose={() => setShowObjectsPanel(false)}
+                />
+              )}
               {showMapsPanel && (
                 <MapsPanel
                   maps={savedMaps}

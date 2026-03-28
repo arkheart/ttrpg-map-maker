@@ -17,6 +17,15 @@ function migrateState(parsed: MapState): MapState {
   if (parsed.rooms) {
     parsed.rooms = parsed.rooms.map((r: MapRoom) => ('shape' in r ? r : { ...r, shape: 'rect' as const }))
   }
+  if (!parsed.layerOrder) {
+    // Build order from existing arrays: terrain first, then rooms, caves, items
+    parsed.layerOrder = [
+      ...parsed.terrain.map(t => t.id),
+      ...parsed.rooms.map(r => r.id),
+      ...parsed.caves.map(c => c.id),
+      ...parsed.items.map(i => i.id),
+    ]
+  }
   return parsed
 }
 
@@ -104,6 +113,7 @@ type Action =
   | { type: 'UPDATE_ITEM'; payload: Partial<MapItem> & { id: string } }
   | { type: 'DELETE_ELEMENT'; payload: { id: string } }
   | { type: 'SET_GLOBAL_GRID'; payload: Partial<GridSettings> }
+  | { type: 'REORDER_ELEMENT'; payload: { id: string; direction: 'up' | 'down' } }
   | { type: 'LOAD_STATE'; payload: MapState }
   | { type: 'CLEAR_ALL' }
 
@@ -115,18 +125,19 @@ const initialState: MapState = {
   terrain: [],
   items: [],
   globalGrid: DEFAULT_GLOBAL_GRID,
+  layerOrder: [],
 }
 
 function mapReducer(state: MapState, action: Action): MapState {
   switch (action.type) {
     case 'ADD_ROOM':
-      return { ...state, rooms: [...state.rooms, action.payload] }
+      return { ...state, rooms: [...state.rooms, action.payload], layerOrder: [...state.layerOrder, action.payload.id] }
     case 'ADD_CAVE':
-      return { ...state, caves: [...state.caves, action.payload] }
+      return { ...state, caves: [...state.caves, action.payload], layerOrder: [...state.layerOrder, action.payload.id] }
     case 'ADD_TERRAIN':
-      return { ...state, terrain: [...state.terrain, action.payload] }
+      return { ...state, terrain: [...state.terrain, action.payload], layerOrder: [...state.layerOrder, action.payload.id] }
     case 'ADD_ITEM':
-      return { ...state, items: [...state.items, action.payload] }
+      return { ...state, items: [...state.items, action.payload], layerOrder: [...state.layerOrder, action.payload.id] }
     case 'UPDATE_ROOM':
       return {
         ...state,
@@ -162,9 +173,20 @@ function mapReducer(state: MapState, action: Action): MapState {
         caves: state.caves.filter(c => c.id !== action.payload.id),
         terrain: state.terrain.filter(t => t.id !== action.payload.id),
         items: state.items.filter(i => i.id !== action.payload.id),
+        layerOrder: state.layerOrder.filter(id => id !== action.payload.id),
       }
     case 'SET_GLOBAL_GRID':
       return { ...state, globalGrid: { ...state.globalGrid, ...action.payload } }
+    case 'REORDER_ELEMENT': {
+      const { id, direction } = action.payload
+      const order = [...state.layerOrder]
+      const idx = order.indexOf(id)
+      if (idx === -1) return state
+      const next = direction === 'up' ? idx + 1 : idx - 1
+      if (next < 0 || next >= order.length) return state
+      ;[order[idx], order[next]] = [order[next], order[idx]]
+      return { ...state, layerOrder: order }
+    }
     case 'LOAD_STATE':
       return action.payload
     case 'CLEAR_ALL':
