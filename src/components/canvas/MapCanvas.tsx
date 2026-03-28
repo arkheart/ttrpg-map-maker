@@ -185,11 +185,18 @@ export const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas({
     }
 
     if (dragStart) {
+      const isEllipseDrag =
+        (activeTool === 'room' && roomDrawMode === 'ellipse') ||
+        (activeTool === 'terrain' && terrainDrawMode === 'ellipse')
+      const rawW = Math.abs(pos.x - dragStart.startX)
+      const rawH = Math.abs(pos.y - dragStart.startY)
+      const w = isEllipseDrag && e.evt.altKey ? Math.min(rawW, rawH) : rawW
+      const h = isEllipseDrag && e.evt.altKey ? Math.min(rawW, rawH) : rawH
       setPreviewRect({
-        x: Math.min(dragStart.startX, pos.x),
-        y: Math.min(dragStart.startY, pos.y),
-        w: Math.abs(pos.x - dragStart.startX),
-        h: Math.abs(pos.y - dragStart.startY),
+        x: Math.min(dragStart.startX, dragStart.startX + (pos.x > dragStart.startX ? w : -w)),
+        y: Math.min(dragStart.startY, dragStart.startY + (pos.y > dragStart.startY ? h : -h)),
+        w,
+        h,
       })
     }
   }
