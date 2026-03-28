@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { Stage } from 'react-konva'
 import type { KonvaEventObject } from 'konva/lib/Node'
+import type Konva from 'konva'
 import { TerrainLayer } from './TerrainLayer'
 import { TerrainDrawLayer } from './TerrainDrawLayer'
 import { RoomLayer } from './RoomLayer'
@@ -16,6 +17,10 @@ const ROOM_FILL = '#3a3a3a'
 const CAVE_FILL = '#2d2410'
 const CLOSE_THRESHOLD = 12
 
+const ZOOM_MIN = 0.2
+const ZOOM_MAX = 8
+const ZOOM_STEP = 1.1
+
 const ITEM_SYMBOLS: Record<string, string> = {
   door: '🚪', chest: '📦', trap: '⚠', stairs: '🔼', torch: '🕯', monster: '👾',
 }
@@ -29,10 +34,15 @@ interface Props {
 
 export function MapCanvas({ selectedElement, onSelect }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
+  const stageRef = useRef<Konva.Stage>(null)
   const { width, height } = useCanvasSize(containerRef)
   const state = useMapState()
   const dispatch = useMapDispatch()
   const { activeTool, activeTerrainType, terrainDrawMode } = useMapTool()
+
+  // Viewport state
+  const [scale, setScale] = useState(1)
+  const [stagePos, setStagePos] = useState({ x: 0, y: 0 })
 
   // Drag-draw state (room, terrain rect/ellipse)
   const [dragStart, setDragStart] = useState<DragStart | null>(null)
@@ -43,7 +53,14 @@ export function MapCanvas({ selectedElement, onSelect }: Props) {
   const [terrainPoints, setTerrainPoints] = useState<number[]>([])
   const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null)
 
-  const getPos = (e: KonvaEventObject<MouseEvent>) => e.target.getStage()!.getPointerPosition()!
+  const getPos = (e: KonvaEventObject<MouseEvent>) => {
+    const stage = e.target.getStage()!
+    const pointer = stage.getPointerPosition()!
+    return {
+      x: (pointer.x - stage.x()) / stage.scaleX(),
+      y: (pointer.y - stage.y()) / stage.scaleY(),
+    }
+  }
 
   const isNearFirst = (points: number[], x: number, y: number) =>
     points.length >= 4 && Math.hypot(x - points[0], y - points[1]) < CLOSE_THRESHOLD
@@ -85,6 +102,34 @@ export function MapCanvas({ selectedElement, onSelect }: Props) {
   }
 
   const handleMouseLeave = () => setMousePos(null)
+
+  // ── Ctrl+Scroll zoom ───────────────────────────────────────────
+
+  const handleWheel = (e: KonvaEventObject<WheelEvent>) => {
+    if (!e.evt.ctrlKey) return
+    e.evt.preventDefault()
+
+    const stage = stageRef.current
+    if (!stage) return
+
+    const pointer = stage.getPointerPosition()!
+    const oldScale = stage.scaleX()
+    const direction = e.evt.deltaY < 0 ? 1 : -1
+    const newScale = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, oldScale * (direction > 0 ? ZOOM_STEP : 1 / ZOOM_STEP)))
+
+    const mousePointTo = {
+      x: (pointer.x - stage.x()) / oldScale,
+      y: (pointer.y - stage.y()) / oldScale,
+    }
+
+    const newPos = {
+      x: pointer.x - mousePointTo.x * newScale,
+      y: pointer.y - mousePointTo.y * newScale,
+    }
+
+    setScale(newScale)
+    setStagePos(newPos)
+  }
 
   // ── Click ──────────────────────────────────────────────────────
 
@@ -178,13 +223,17 @@ export function MapCanvas({ selectedElement, onSelect }: Props) {
   return (
     <div ref={containerRef} style={{ flex: 1, background: '#1a1a1a', overflow: 'hidden', position: 'relative', minWidth: 0, minHeight: 0 }}>
       <Stage
+        ref={stageRef}
         width={width} height={height}
+        scaleX={scale} scaleY={scale}
+        x={stagePos.x} y={stagePos.y}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onClick={handleClick}
         onDblClick={handleDblClick}
         onMouseLeave={handleMouseLeave}
+        onWheel={handleWheel}
         style={{ cursor: activeTool === 'select' ? 'default' : nearFirst_ ? 'cell' : 'crosshair' }}
       >
         <TerrainLayer
@@ -217,8 +266,10 @@ export function MapCanvas({ selectedElement, onSelect }: Props) {
       {previewRect && previewRect.w > 2 && previewRect.h > 2 && terrainDrawMode !== 'ellipse' && (
         <div style={{
           position: 'absolute',
-          left: previewRect.x, top: previewRect.y,
-          width: previewRect.w, height: previewRect.h,
+          left: previewRect.x * scale + stagePos.x,
+          top: previewRect.y * scale + stagePos.y,
+          width: previewRect.w * scale,
+          height: previewRect.h * scale,
           border: '2px dashed #00aaff',
           pointerEvents: 'none',
         }} />
