@@ -10,7 +10,7 @@ export interface SavedMapEntry {
   state: MapState
 }
 
-function migrateState(parsed: MapState): MapState {
+export function migrateState(parsed: MapState): MapState {
   if (!parsed.globalGrid) {
     parsed.globalGrid = { enabled: false, size: 32, color: '#ffffff', opacity: 0.15 }
   }
@@ -128,7 +128,7 @@ const initialState: MapState = {
   layerOrder: [],
 }
 
-function mapReducer(state: MapState, action: Action): MapState {
+export function mapReducer(state: MapState, action: Action): MapState {
   switch (action.type) {
     case 'ADD_ROOM':
       return { ...state, rooms: [...state.rooms, action.payload], layerOrder: [...state.layerOrder, action.payload.id] }
