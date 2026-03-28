@@ -1,5 +1,5 @@
 import { createContext, useContext, useState } from 'react'
-import type { ToolType, TerrainType, TerrainDrawMode, RoomDrawMode } from '@/types/map'
+import type { ToolType, TerrainType, TerrainDrawMode, RoomDrawMode, CaveDrawMode } from '@/types/map'
 
 interface MapToolContext {
   activeTool: ToolType
@@ -10,6 +10,8 @@ interface MapToolContext {
   setTerrainDrawMode: (m: TerrainDrawMode) => void
   roomDrawMode: RoomDrawMode
   setRoomDrawMode: (m: RoomDrawMode) => void
+  caveDrawMode: CaveDrawMode
+  setCaveDrawMode: (m: CaveDrawMode) => void
 }
 
 export const MapToolContext = createContext<MapToolContext>({
@@ -21,6 +23,8 @@ export const MapToolContext = createContext<MapToolContext>({
   setTerrainDrawMode: () => {},
   roomDrawMode: 'rect',
   setRoomDrawMode: () => {},
+  caveDrawMode: 'polygon',
+  setCaveDrawMode: () => {},
 })
 
 export function useMapToolState(): MapToolContext {
@@ -28,7 +32,8 @@ export function useMapToolState(): MapToolContext {
   const [activeTerrainType, setActiveTerrainType] = useState<TerrainType>('grass')
   const [terrainDrawMode, setTerrainDrawMode] = useState<TerrainDrawMode>('rect')
   const [roomDrawMode, setRoomDrawMode] = useState<RoomDrawMode>('rect')
-  return { activeTool, setActiveTool, activeTerrainType, setActiveTerrainType, terrainDrawMode, setTerrainDrawMode, roomDrawMode, setRoomDrawMode }
+  const [caveDrawMode, setCaveDrawMode] = useState<CaveDrawMode>('polygon')
+  return { activeTool, setActiveTool, activeTerrainType, setActiveTerrainType, terrainDrawMode, setTerrainDrawMode, roomDrawMode, setRoomDrawMode, caveDrawMode, setCaveDrawMode }
 }
 
 export function useMapTool() {

@@ -6,6 +6,33 @@ interface Props {
   color?: string         // stroke/fill accent color, defaults to cave brown
 }
 
+interface PaintProps {
+  points: number[]  // flat [x0,y0,...] trail of paint stroke
+}
+
+export function PaintCaveDrawLayer({ points }: PaintProps) {
+  if (points.length < 4) return null
+  return (
+    <Layer listening={false}>
+      <Line
+        points={points}
+        stroke="rgba(45,36,16,0.7)"
+        strokeWidth={2}
+        lineJoin="round"
+        lineCap="round"
+        closed={false}
+      />
+      <Line
+        points={points}
+        fill="rgba(45,36,16,0.4)"
+        stroke="#aaa"
+        strokeWidth={1}
+        closed
+      />
+    </Layer>
+  )
+}
+
 export function CaveDrawLayer({ points, mousePos, color = '#aaa' }: Props) {
   if (points.length === 0) return null
 

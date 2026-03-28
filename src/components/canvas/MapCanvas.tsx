@@ -6,7 +6,7 @@ import { TerrainLayer } from './TerrainLayer'
 import { TerrainDrawLayer } from './TerrainDrawLayer'
 import { RoomLayer } from './RoomLayer'
 import { ItemLayer } from './ItemLayer'
-import { CaveDrawLayer } from './CaveDrawLayer'
+import { CaveDrawLayer, PaintCaveDrawLayer } from './CaveDrawLayer'
 import { GlobalGridLayer } from './GlobalGridLayer'
 import { useMapState, useMapDispatch } from '@/store/mapStore'
 import { useMapTool } from '@/hooks/useMapTool'
@@ -45,7 +45,7 @@ export const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas({
   const { width, height } = useCanvasSize(containerRef)
   const state = useMapState()
   const dispatch = useMapDispatch()
-  const { activeTool, activeTerrainType, terrainDrawMode, roomDrawMode } = useMapTool()
+  const { activeTool, activeTerrainType, terrainDrawMode, roomDrawMode, caveDrawMode } = useMapTool()
 
   // Viewport state
   const [scale, setScale] = useState(1)
@@ -71,6 +71,12 @@ export const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas({
   const [roomPoints, setRoomPoints] = useState<number[]>([])
   const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null)
 
+  // Paint mode state
+  const isPainting = useRef(false)
+  const paintPointsRef = useRef<number[]>([])
+  const [paintPreview, setPaintPreview] = useState<number[]>([])
+  const [isPaintingState, setIsPaintingState] = useState(false)
+
   const getPos = (e: KonvaEventObject<MouseEvent>) => {
     const stage = e.target.getStage()!
     const pointer = stage.getPointerPosition()!
@@ -85,11 +91,46 @@ export const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas({
 
   // ── Commit helpers ─────────────────────────────────────────────
 
+  // Ramer–Douglas–Peucker simplification for paint strokes
+  const rdpSimplify = (pts: number[], epsilon: number): number[] => {
+    if (pts.length <= 4) return pts
+    const n = pts.length / 2
+    let maxDist = 0
+    let maxIdx = 0
+    const x0 = pts[0], y0 = pts[1], xn = pts[n * 2 - 2], yn = pts[n * 2 - 1]
+    const dx = xn - x0, dy = yn - y0
+    const len = Math.hypot(dx, dy)
+    for (let i = 1; i < n - 1; i++) {
+      const px = pts[i * 2], py = pts[i * 2 + 1]
+      const dist = len === 0
+        ? Math.hypot(px - x0, py - y0)
+        : Math.abs(dy * px - dx * py + xn * y0 - yn * x0) / len
+      if (dist > maxDist) { maxDist = dist; maxIdx = i }
+    }
+    if (maxDist > epsilon) {
+      const left = rdpSimplify(pts.slice(0, (maxIdx + 1) * 2), epsilon)
+      const right = rdpSimplify(pts.slice(maxIdx * 2), epsilon)
+      return [...left.slice(0, -2), ...right]
+    }
+    return [x0, y0, xn, yn]
+  }
+
   const commitCave = (points: number[]) => {
     if (points.length < 6) return
     dispatch({ type: 'ADD_CAVE', payload: { id: crypto.randomUUID(), points, fill: CAVE_FILL } })
     setCavePoints([])
     setMousePos(null)
+  }
+
+  const commitPaintCave = () => {
+    const pts = paintPointsRef.current
+    isPainting.current = false
+    setIsPaintingState(false)
+    paintPointsRef.current = []
+    setPaintPreview([])
+    if (pts.length < 6) return
+    const simplified = rdpSimplify(pts, 3)
+    dispatch({ type: 'ADD_CAVE', payload: { id: crypto.randomUUID(), points: simplified, fill: CAVE_FILL } })
   }
 
   const commitTerrainCustom = (points: number[]) => {
@@ -121,8 +162,22 @@ export const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas({
 
     const pos = getPos(e)
 
+    // Paint mode: collect points while mouse button is held
+    if (activeTool === 'cave' && caveDrawMode === 'paint') {
+      setMousePos(pos)
+      if (isPainting.current) {
+        const last = paintPointsRef.current
+        const MIN_DIST = 4 / scale
+        if (last.length === 0 || Math.hypot(pos.x - last[last.length - 2], pos.y - last[last.length - 1]) >= MIN_DIST) {
+          paintPointsRef.current = [...last, pos.x, pos.y]
+          setPaintPreview([...paintPointsRef.current])
+        }
+      }
+      return
+    }
+
     const isPolygonMode =
-      activeTool === 'cave' ||
+      (activeTool === 'cave' && caveDrawMode === 'polygon') ||
       (activeTool === 'terrain' && terrainDrawMode === 'custom') ||
       (activeTool === 'room' && roomDrawMode === 'custom')
 
@@ -178,11 +233,14 @@ export const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas({
     const onStage = e.target === e.target.getStage()
 
     // Cave polygon
-    if (activeTool === 'cave') {
+    if (activeTool === 'cave' && caveDrawMode === 'polygon') {
       if (isNearFirst(cavePoints, pos.x, pos.y)) commitCave(cavePoints)
       else setCavePoints(prev => [...prev, pos.x, pos.y])
       return
     }
+
+    // Paint mode clicks are handled by mousedown/up, not click
+    if (activeTool === 'cave' && caveDrawMode === 'paint') return
 
     // Room custom polygon
     if (activeTool === 'room' && roomDrawMode === 'custom') {
@@ -213,7 +271,7 @@ export const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas({
   }
 
   const handleDblClick = (_e: KonvaEventObject<MouseEvent>) => {
-    if (activeTool === 'cave' && cavePoints.length >= 6) {
+    if (activeTool === 'cave' && caveDrawMode === 'polygon' && cavePoints.length >= 6) {
       commitCave(cavePoints.slice(0, -2))
     }
     if (activeTool === 'room' && roomDrawMode === 'custom' && roomPoints.length >= 6) {
@@ -234,6 +292,16 @@ export const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas({
       return
     }
 
+    // Paint cave mode
+    if (activeTool === 'cave' && caveDrawMode === 'paint') {
+      const pos = getPos(e)
+      isPainting.current = true
+      setIsPaintingState(true)
+      paintPointsRef.current = [pos.x, pos.y]
+      setPaintPreview([pos.x, pos.y])
+      return
+    }
+
     const isDragTool =
       (activeTool === 'room' && (roomDrawMode === 'rect' || roomDrawMode === 'ellipse')) ||
       (activeTool === 'terrain' && (terrainDrawMode === 'rect' || terrainDrawMode === 'ellipse'))
@@ -247,6 +315,13 @@ export const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas({
 
   const handleMouseUp = (_e: KonvaEventObject<MouseEvent>) => {
     if (panStart.current) { panStart.current = null; return }
+
+    // Commit paint cave
+    if (activeTool === 'cave' && caveDrawMode === 'paint' && isPainting.current) {
+      commitPaintCave()
+      return
+    }
+
     if (!dragStart || !previewRect) return
     const { x, y, w, h } = previewRect
 
@@ -331,13 +406,14 @@ export const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas({
     }
   }))
 
-  const nearFirstCave = activeTool === 'cave' && mousePos ? isNearFirst(cavePoints, mousePos.x, mousePos.y) : false
+  const nearFirstCave = activeTool === 'cave' && caveDrawMode === 'polygon' && mousePos ? isNearFirst(cavePoints, mousePos.x, mousePos.y) : false
   const nearFirstRoom = activeTool === 'room' && roomDrawMode === 'custom' && mousePos ? isNearFirst(roomPoints, mousePos.x, mousePos.y) : false
   const nearFirstTerrain = activeTool === 'terrain' && terrainDrawMode === 'custom' && mousePos ? isNearFirst(terrainPoints, mousePos.x, mousePos.y) : false
   const nearFirst_ = nearFirstCave || nearFirstRoom || nearFirstTerrain
 
   const showHint =
-    activeTool === 'cave' ||
+    (activeTool === 'cave' && caveDrawMode === 'polygon') ||
+    (activeTool === 'cave' && caveDrawMode === 'paint') ||
     (activeTool === 'room' && roomDrawMode === 'custom') ||
     (activeTool === 'terrain' && terrainDrawMode === 'custom')
 
@@ -384,7 +460,8 @@ export const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas({
           selectedId={selectedElement?.type === 'item' ? selectedElement.id : null}
         />
         <GlobalGridLayer width={width} height={height} scale={scale} stagePos={stagePos} grid={state.globalGrid} />
-        <CaveDrawLayer points={cavePoints} mousePos={activeTool === 'cave' ? mousePos : null} />
+        <CaveDrawLayer points={cavePoints} mousePos={activeTool === 'cave' && caveDrawMode === 'polygon' ? mousePos : null} />
+        <PaintCaveDrawLayer points={activeTool === 'cave' && caveDrawMode === 'paint' ? paintPreview : []} />
         <CaveDrawLayer points={roomPoints} mousePos={activeTool === 'room' && roomDrawMode === 'custom' ? mousePos : null} color="#00aaff" />
         <TerrainDrawLayer
           drawMode={terrainDrawMode}
@@ -413,14 +490,16 @@ export const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas({
         }} />
       )}
 
-      {/* Polygon hint */}
+      {/* Polygon / paint hint */}
       {showHint && (
         <div style={{
           position: 'absolute', bottom: '12px', left: '50%', transform: 'translateX(-50%)',
           background: 'rgba(0,0,0,0.7)', color: '#aaa',
           padding: '4px 12px', borderRadius: '4px', fontSize: '12px', pointerEvents: 'none',
         }}>
-          {activePoints.length === 0
+          {activeTool === 'cave' && caveDrawMode === 'paint'
+            ? (isPaintingState ? 'Release to finish cave' : 'Click and drag to paint a cave')
+            : activePoints.length === 0
             ? 'Click to place first vertex'
             : nearFirst_
             ? 'Click to close shape'

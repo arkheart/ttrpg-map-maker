@@ -10,6 +10,10 @@ export function loadState() {
         if (!parsed.globalGrid) {
             parsed.globalGrid = { enabled: false, size: 32, color: '#ffffff', opacity: 0.15 };
         }
+        // Migrate old rooms that lack shape field
+        if (parsed.rooms) {
+            parsed.rooms = parsed.rooms.map((r) => ('shape' in r ? r : { ...r, shape: 'rect' }));
+        }
         return parsed;
     }
     catch {
@@ -64,6 +68,7 @@ function mapReducer(state, action) {
             };
         case 'DELETE_ELEMENT':
             return {
+                ...state,
                 rooms: state.rooms.filter(r => r.id !== action.payload.id),
                 caves: state.caves.filter(c => c.id !== action.payload.id),
                 terrain: state.terrain.filter(t => t.id !== action.payload.id),

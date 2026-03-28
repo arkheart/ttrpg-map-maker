@@ -18,24 +18,24 @@ export function TerrainLayer({ terrain, onSelect, selectedId }) {
                 draggable,
             };
             if (t.shape === 'rect') {
-                return (_jsxs(_Fragment, { children: [_jsx(Rect, { id: t.id, x: t.x, y: t.y, width: t.width, height: t.height, fill: def.fill, stroke: stroke, strokeWidth: strokeWidth, ...sharedHandlers, onDragEnd: e => dispatch({ type: 'UPDATE_TERRAIN', payload: { id: t.id, x: e.target.x(), y: e.target.y() } }) }, t.id), t.grid && _jsx(RectGrid, { grid: t.grid, x: t.x, y: t.y, width: t.width, height: t.height }, `${t.id}-grid`), _jsx(Text, { x: t.x + 4, y: t.y + 4, text: def.icon, fontSize: 14, listening: false }, `${t.id}-i`), t.label && _jsx(Text, { x: t.x + 4, y: t.y + 22, text: t.label, fontSize: 11, fill: "#ddd", listening: false }, `${t.id}-l`)] }));
+                return (_jsxs(_Fragment, { children: [_jsx(Rect, { id: t.id, x: t.x, y: t.y, width: t.width, height: t.height, fill: def.fill, stroke: stroke, strokeWidth: strokeWidth, ...sharedHandlers, onDragEnd: e => dispatch({ type: 'UPDATE_TERRAIN', payload: { id: t.id, x: e.target.x(), y: e.target.y() } }) }, t.id), t.grid && _jsx(RectGrid, { grid: t.grid, x: t.x, y: t.y, width: t.width, height: t.height }, `${t.id}-grid`), _jsx(Text, { x: t.x + t.width / 2, y: t.y + t.height / 2 - (t.label ? 12 : 8), text: def.icon, fontSize: 14, align: "center", offsetX: 7, listening: false }, `${t.id}-i`), t.label && _jsx(Text, { x: t.x, y: t.y + t.height / 2 + 6, width: t.width, text: t.label, fontSize: 11, fill: "#ddd", align: "center", listening: false }, `${t.id}-l`)] }));
             }
             if (t.shape === 'ellipse') {
-                return (_jsxs(_Fragment, { children: [_jsx(Ellipse, { id: t.id, x: t.x, y: t.y, radiusX: t.radiusX, radiusY: t.radiusY, fill: def.fill, stroke: stroke, strokeWidth: strokeWidth, ...sharedHandlers, onDragEnd: e => dispatch({ type: 'UPDATE_TERRAIN', payload: { id: t.id, x: e.target.x(), y: e.target.y() } }) }, t.id), t.grid && _jsx(EllipseGrid, { grid: t.grid, cx: t.x, cy: t.y, radiusX: t.radiusX, radiusY: t.radiusY }, `${t.id}-grid`), _jsx(Text, { x: t.x - 8, y: t.y - 10, text: def.icon, fontSize: 14, listening: false }, `${t.id}-i`), t.label && _jsx(Text, { x: t.x - t.radiusX, y: t.y - t.radiusY + 4, text: t.label, fontSize: 11, fill: "#ddd", listening: false }, `${t.id}-l`)] }));
+                return (_jsxs(_Fragment, { children: [_jsx(Ellipse, { id: t.id, x: t.x, y: t.y, radiusX: t.radiusX, radiusY: t.radiusY, fill: def.fill, stroke: stroke, strokeWidth: strokeWidth, ...sharedHandlers, onDragEnd: e => dispatch({ type: 'UPDATE_TERRAIN', payload: { id: t.id, x: e.target.x(), y: e.target.y() } }) }, t.id), t.grid && _jsx(EllipseGrid, { grid: t.grid, cx: t.x, cy: t.y, radiusX: t.radiusX, radiusY: t.radiusY }, `${t.id}-grid`), _jsx(Text, { x: t.x, y: t.y - (t.label ? 12 : 8), text: def.icon, fontSize: 14, align: "center", offsetX: 7, listening: false }, `${t.id}-i`), t.label && _jsx(Text, { x: t.x - t.radiusX, y: t.y + 6, width: t.radiusX * 2, text: t.label, fontSize: 11, fill: "#ddd", align: "center", listening: false }, `${t.id}-l`)] }));
             }
             if (t.shape === 'custom') {
-                // Bounding box top-left for icon/label placement
                 const xs = t.points.filter((_, i) => i % 2 === 0);
                 const ys = t.points.filter((_, i) => i % 2 !== 0);
-                const minX = Math.min(...xs);
-                const minY = Math.min(...ys);
+                const cx = xs.reduce((a, b) => a + b, 0) / xs.length;
+                const cy = ys.reduce((a, b) => a + b, 0) / ys.length;
+                const spanX = Math.max(...xs) - Math.min(...xs);
                 return (_jsxs(_Fragment, { children: [_jsx(Line, { id: t.id, points: t.points, fill: def.fill, stroke: stroke, strokeWidth: strokeWidth, closed: true, ...sharedHandlers, onDragEnd: e => {
                                 dispatch({ type: 'UPDATE_TERRAIN', payload: {
                                         id: t.id,
                                         points: t.points.map((p, i) => i % 2 === 0 ? p + e.target.x() : p + e.target.y()),
                                     } });
                                 e.target.position({ x: 0, y: 0 });
-                            } }, t.id), t.grid && _jsx(PolyGrid, { grid: t.grid, points: t.points }, `${t.id}-grid`), _jsx(Text, { x: minX + 4, y: minY + 4, text: def.icon, fontSize: 14, listening: false }, `${t.id}-i`), t.label && _jsx(Text, { x: minX + 4, y: minY + 22, text: t.label, fontSize: 11, fill: "#ddd", listening: false }, `${t.id}-l`)] }));
+                            } }, t.id), t.grid && _jsx(PolyGrid, { grid: t.grid, points: t.points }, `${t.id}-grid`), _jsx(Text, { x: cx, y: cy - (t.label ? 12 : 8), text: def.icon, fontSize: 14, align: "center", offsetX: 7, listening: false }, `${t.id}-i`), t.label && _jsx(Text, { x: cx - spanX / 2, y: cy + 6, width: spanX, text: t.label, fontSize: 11, fill: "#ddd", align: "center", listening: false }, `${t.id}-l`)] }));
             }
             return null;
         }) }));

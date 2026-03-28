@@ -1,5 +1,7 @@
 export type ToolType = 'select' | 'room' | 'cave' | 'terrain' | 'item' | 'erase'
 
+export type CaveDrawMode = 'polygon' | 'paint'
+
 export type RoomDrawMode = 'rect' | 'ellipse' | 'custom'
 
 export type TerrainType = 'forest' | 'grass' | 'mountain' | 'rough' | 'water' | 'sand' | 'swamp' | 'snow'

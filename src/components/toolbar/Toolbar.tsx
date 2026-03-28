@@ -1,6 +1,6 @@
 import { useMapTool } from '@/hooks/useMapTool'
 import { useMapState, useMapDispatch } from '@/store/mapStore'
-import type { ToolType, TerrainType, TerrainDrawMode, RoomDrawMode } from '@/types/map'
+import type { ToolType, TerrainType, TerrainDrawMode, RoomDrawMode, CaveDrawMode } from '@/types/map'
 import { TERRAIN_PALETTE } from '@/types/map'
 import { ToolButton } from './ToolButton'
 
@@ -8,6 +8,11 @@ const SHAPE_MODES: { mode: string; label: string; icon: string }[] = [
   { mode: 'rect',    label: 'Square', icon: '⬜' },
   { mode: 'ellipse', label: 'Circle', icon: '⭕' },
   { mode: 'custom',  label: 'Custom', icon: '✏️' },
+]
+
+const CAVE_MODES: { mode: CaveDrawMode; label: string; icon: string }[] = [
+  { mode: 'polygon', label: 'Polygon', icon: '✏️' },
+  { mode: 'paint',   label: 'Paint',   icon: '🖌️' },
 ]
 
 const TOOLS: { tool: ToolType; label: string; icon: string }[] = [
@@ -63,7 +68,7 @@ function ModeBtn({ label, icon, active, onClick }: { label: string; icon: string
 }
 
 export function Toolbar({ onExportPng }: { onExportPng?: () => void }) {
-  const { activeTool, setActiveTool, activeTerrainType, setActiveTerrainType, terrainDrawMode, setTerrainDrawMode, roomDrawMode, setRoomDrawMode } = useMapTool()
+  const { activeTool, setActiveTool, activeTerrainType, setActiveTerrainType, terrainDrawMode, setTerrainDrawMode, roomDrawMode, setRoomDrawMode, caveDrawMode, setCaveDrawMode } = useMapTool()
   const dispatch = useMapDispatch()
   const { globalGrid } = useMapState()
 
@@ -145,6 +150,15 @@ export function Toolbar({ onExportPng }: { onExportPng?: () => void }) {
 
       {/* ── Secondary bar (always present, fixed height) ── */}
       <div style={subRowBase}>
+        {activeTool === 'cave' && (
+          <>
+            <span style={labelStyle}>Mode</span>
+            {CAVE_MODES.map(({ mode, label, icon }) => (
+              <ModeBtn key={mode} label={label} icon={icon} active={caveDrawMode === mode} onClick={() => setCaveDrawMode(mode)} />
+            ))}
+          </>
+        )}
+
         {activeTool === 'room' && (
           <>
             <span style={labelStyle}>Shape</span>
