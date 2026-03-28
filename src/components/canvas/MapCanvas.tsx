@@ -252,7 +252,7 @@ export function MapCanvas({ selectedElement, onSelect }: Props) {
           onSelect={id => handleSelect('item', id)}
           selectedId={selectedElement?.type === 'item' ? selectedElement.id : null}
         />
-        <GlobalGridLayer width={width} height={height} grid={state.globalGrid} />
+        <GlobalGridLayer width={width} height={height} scale={scale} stagePos={stagePos} grid={state.globalGrid} />
         <CaveDrawLayer points={cavePoints} mousePos={activeTool === 'cave' ? mousePos : null} />
         <TerrainDrawLayer
           drawMode={terrainDrawMode}
