@@ -261,7 +261,8 @@ function TerrainElement({ t, isSelected, onSelect, draggable, editMode, dispatch
           }
         }}
         onDragEnd={e => {
-          dispatch({ type: 'UPDATE_TERRAIN', payload: { id: t.id, points: t.points.map((p, i) => i % 2 === 0 ? p + e.target.x() : p + e.target.y()) } })
+          const tCustom = t as Extract<MapTerrain, { shape: 'custom' }>
+          dispatch({ type: 'UPDATE_TERRAIN', payload: { id: t.id, points: tCustom.points.map((p: number, i: number) => i % 2 === 0 ? p + e.target.x() : p + e.target.y()) } })
           e.target.position({ x: 0, y: 0 })
         }}
       />
@@ -330,7 +331,8 @@ function RoomElement({ r, isSelected, onSelect, draggable, editMode, dispatch }:
             }
           }}
           onDragEnd={e => {
-            dispatch({ type: 'UPDATE_ROOM', payload: { id: r.id, points: r.points.map((p, i) => i % 2 === 0 ? p + e.target.x() : p + e.target.y()) } })
+            const rCustom = r as Extract<MapRoom, { shape: 'custom' }>
+            dispatch({ type: 'UPDATE_ROOM', payload: { id: r.id, points: rCustom.points.map((p: number, i: number) => i % 2 === 0 ? p + e.target.x() : p + e.target.y()) } })
             e.target.position({ x: 0, y: 0 })
           }}
         />

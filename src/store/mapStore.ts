@@ -16,7 +16,7 @@ export function migrateState(raw: MapState): MapState {
     parsed.globalGrid = { enabled: false, size: 32, color: '#ffffff', opacity: 0.15 }
   }
   const rooms = parsed.rooms ?? []
-  parsed.rooms = rooms.map((r: MapRoom) => ('shape' in r ? r : { ...r, shape: 'rect' as const }))
+  parsed.rooms = rooms.map((r: MapRoom) => ('shape' in r ? r : { ...(r as object), shape: 'rect' as const })) as MapRoom[]
   const caves = parsed.caves ?? []
   parsed.caves = caves
   const terrain = parsed.terrain ?? []
@@ -233,13 +233,16 @@ export function mapReducer(state: MapState, action: Action): MapState {
       return { ...state, terrain: [...state.terrain, action.payload], layerOrder: [...state.layerOrder, action.payload.id] }
     case 'ADD_ITEM':
       return { ...state, items: [...state.items, action.payload], layerOrder: [...state.layerOrder, action.payload.id] }
-    case 'UPDATE_ROOM':
+    case 'UPDATE_ROOM': {
+      const { grid: roomGrid, ...roomRest } = action.payload
+      const roomPatch = roomGrid === null ? { ...roomRest, grid: undefined } : { ...roomRest, ...(roomGrid !== undefined ? { grid: roomGrid } : {}) }
       return {
         ...state,
         rooms: state.rooms.map(r =>
-          r.id === action.payload.id ? { ...r, ...action.payload } : r
+          r.id === action.payload.id ? { ...r, ...roomPatch } as MapRoom : r
         ),
       }
+    }
     case 'UPDATE_CAVE':
       return {
         ...state,
@@ -247,13 +250,16 @@ export function mapReducer(state: MapState, action: Action): MapState {
           c.id === action.payload.id ? { ...c, ...action.payload } : c
         ),
       }
-    case 'UPDATE_TERRAIN':
+    case 'UPDATE_TERRAIN': {
+      const { grid: terrainGrid, ...terrainRest } = action.payload
+      const terrainPatch = terrainGrid === null ? { ...terrainRest, grid: undefined } : { ...terrainRest, ...(terrainGrid !== undefined ? { grid: terrainGrid } : {}) }
       return {
         ...state,
         terrain: state.terrain.map(t =>
-          t.id === action.payload.id ? { ...t, ...action.payload } : t
+          t.id === action.payload.id ? { ...t, ...terrainPatch } as MapTerrain : t
         ),
       }
+    }
     case 'UPDATE_ITEM':
       return {
         ...state,

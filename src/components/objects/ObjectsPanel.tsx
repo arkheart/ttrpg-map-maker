@@ -1,6 +1,6 @@
 import { useMapState, useMapDispatch } from '@/store/mapStore'
 import { TERRAIN_PALETTE } from '@/types/map'
-import type { SelectedElement, MapRoom, MapCave, MapTerrain, MapItem } from '@/types/map'
+import type { SelectedElement } from '@/types/map'
 
 interface Props {
   selected: SelectedElement | null

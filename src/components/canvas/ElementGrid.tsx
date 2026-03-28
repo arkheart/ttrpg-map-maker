@@ -111,7 +111,7 @@ export function PolyGrid({ grid, points }: PolyGridProps) {
 
   return (
     <Group
-      clipFunc={(ctx: CanvasRenderingContext2D) => {
+      clipFunc={(ctx: any) => {
         ctx.beginPath()
         ctx.moveTo(pairs[0][0], pairs[0][1])
         for (let i = 1; i < pairs.length; i++) {
@@ -170,7 +170,7 @@ export function EllipseGrid({ grid, cx, cy, radiusX, radiusY }: EllipseGridProps
 
   return (
     <Group
-      clipFunc={(ctx: CanvasRenderingContext2D) => {
+      clipFunc={(ctx: any) => {
         ctx.beginPath()
         ctx.ellipse(cx, cy, radiusX, radiusY, 0, 0, Math.PI * 2)
         ctx.closePath()
