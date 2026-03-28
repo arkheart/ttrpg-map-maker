@@ -1,5 +1,5 @@
 import { useMapTool } from '@/hooks/useMapTool'
-import { useMapDispatch } from '@/store/mapStore'
+import { useMapState, useMapDispatch } from '@/store/mapStore'
 import type { ToolType, TerrainType, TerrainDrawMode } from '@/types/map'
 import { TERRAIN_PALETTE } from '@/types/map'
 import { ToolButton } from './ToolButton'
@@ -22,6 +22,7 @@ const TOOLS: { tool: ToolType; label: string; icon: string }[] = [
 export function Toolbar() {
   const { activeTool, setActiveTool, activeTerrainType, setActiveTerrainType, terrainDrawMode, setTerrainDrawMode } = useMapTool()
   const dispatch = useMapDispatch()
+  const { globalGrid } = useMapState()
 
   return (
     <div style={{ background: '#252525', borderBottom: '1px solid #333' }}>
@@ -53,6 +54,79 @@ export function Toolbar() {
         >
           Clear All
         </button>
+      </div>
+
+      {/* Global grid sub-row */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        padding: '4px 12px 8px',
+        borderTop: '1px solid #333',
+      }}>
+        <span style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Grid:</span>
+        <button
+          title={globalGrid.enabled ? 'Disable global grid' : 'Enable global grid'}
+          onClick={() => dispatch({ type: 'SET_GLOBAL_GRID', payload: { enabled: !globalGrid.enabled } })}
+          style={{
+            padding: '4px 10px',
+            background: globalGrid.enabled ? '#0066cc' : '#2a2a2a',
+            color: '#fff',
+            border: `1px solid ${globalGrid.enabled ? '#0088ff' : '#444'}`,
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontSize: '12px',
+            fontWeight: globalGrid.enabled ? 600 : 400,
+          }}
+        >
+          # {globalGrid.enabled ? 'On' : 'Off'}
+        </button>
+        {globalGrid.enabled && (
+          <>
+            <input
+              type="number"
+              min={4}
+              max={256}
+              value={globalGrid.size}
+              onChange={e => {
+                const v = parseInt(e.target.value, 10)
+                if (!isNaN(v) && v >= 4) dispatch({ type: 'SET_GLOBAL_GRID', payload: { size: v } })
+              }}
+              title="Grid cell size in pixels"
+              style={{
+                width: '54px',
+                padding: '4px 6px',
+                background: '#333',
+                color: '#fff',
+                border: '1px solid #555',
+                borderRadius: '4px',
+                fontSize: '12px',
+              }}
+            />
+            <span style={{ fontSize: '11px', color: '#666' }}>px</span>
+            <div style={{ width: '1px', height: '20px', background: '#444', margin: '0 4px' }} />
+            <input
+              type="color"
+              value={globalGrid.color ?? '#ffffff'}
+              onChange={e => dispatch({ type: 'SET_GLOBAL_GRID', payload: { color: e.target.value } })}
+              title="Grid color"
+              style={{ width: '28px', height: '28px', padding: 0, border: 'none', cursor: 'pointer', borderRadius: '4px', background: 'none' }}
+            />
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.05}
+              value={globalGrid.opacity ?? 0.15}
+              onChange={e => dispatch({ type: 'SET_GLOBAL_GRID', payload: { opacity: parseFloat(e.target.value) } })}
+              title="Grid opacity"
+              style={{ width: '80px' }}
+            />
+            <span style={{ fontSize: '11px', color: '#888', minWidth: '28px' }}>
+              {Math.round((globalGrid.opacity ?? 0.15) * 100)}%
+            </span>
+          </>
+        )}
       </div>
 
       {/* Terrain palette sub-row */}

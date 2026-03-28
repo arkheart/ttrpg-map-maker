@@ -4,7 +4,13 @@ const STORAGE_KEY = 'ttrpg-map-state'
 export function loadState(): MapState | undefined {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    return raw ? (JSON.parse(raw) as MapState) : undefined
+    if (!raw) return undefined
+    const parsed = JSON.parse(raw) as MapState
+    // Migrate old saves that lack globalGrid
+    if (!parsed.globalGrid) {
+      parsed.globalGrid = { enabled: false, size: 32, color: '#ffffff', opacity: 0.15 }
+    }
+    return parsed
   } catch {
     return undefined
   }
@@ -17,7 +23,7 @@ export function saveState(state: MapState) {
     // storage quota exceeded — silently ignore
   }
 }
-import type { MapState, MapRoom, MapCave, MapTerrain, MapItem, TerrainType } from '@/types/map'
+import type { MapState, MapRoom, MapCave, MapTerrain, MapItem, TerrainType, GridSettings } from '@/types/map'
 
 type Action =
   | { type: 'ADD_ROOM'; payload: MapRoom }
@@ -26,16 +32,20 @@ type Action =
   | { type: 'ADD_ITEM'; payload: MapItem }
   | { type: 'UPDATE_ROOM'; payload: Partial<MapRoom> & { id: string } }
   | { type: 'UPDATE_CAVE'; payload: Partial<MapCave> & { id: string } }
-  | { type: 'UPDATE_TERRAIN'; payload: { id: string; terrainType?: TerrainType; label?: string; x?: number; y?: number; width?: number; height?: number; radiusX?: number; radiusY?: number; points?: number[] } }
+  | { type: 'UPDATE_TERRAIN'; payload: { id: string; terrainType?: TerrainType; label?: string; x?: number; y?: number; width?: number; height?: number; radiusX?: number; radiusY?: number; points?: number[]; grid?: GridSettings | null } }
   | { type: 'UPDATE_ITEM'; payload: Partial<MapItem> & { id: string } }
   | { type: 'DELETE_ELEMENT'; payload: { id: string } }
+  | { type: 'SET_GLOBAL_GRID'; payload: Partial<GridSettings> }
   | { type: 'CLEAR_ALL' }
+
+const DEFAULT_GLOBAL_GRID: GridSettings = { enabled: false, size: 32, color: '#ffffff', opacity: 0.15 }
 
 const initialState: MapState = {
   rooms: [],
   caves: [],
   terrain: [],
   items: [],
+  globalGrid: DEFAULT_GLOBAL_GRID,
 }
 
 function mapReducer(state: MapState, action: Action): MapState {
@@ -83,6 +93,8 @@ function mapReducer(state: MapState, action: Action): MapState {
         terrain: state.terrain.filter(t => t.id !== action.payload.id),
         items: state.items.filter(i => i.id !== action.payload.id),
       }
+    case 'SET_GLOBAL_GRID':
+      return { ...state, globalGrid: { ...state.globalGrid, ...action.payload } }
     case 'CLEAR_ALL':
       localStorage.removeItem('ttrpg-map-state')
       return initialState

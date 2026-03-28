@@ -6,6 +6,7 @@ import { TerrainDrawLayer } from './TerrainDrawLayer'
 import { RoomLayer } from './RoomLayer'
 import { ItemLayer } from './ItemLayer'
 import { CaveDrawLayer } from './CaveDrawLayer'
+import { GlobalGridLayer } from './GlobalGridLayer'
 import { useMapState, useMapDispatch } from '@/store/mapStore'
 import { useMapTool } from '@/hooks/useMapTool'
 import { useCanvasSize } from '@/hooks/useCanvasSize'
@@ -175,7 +176,7 @@ export function MapCanvas({ selectedElement, onSelect }: Props) {
   const nearFirst_ = nearFirstCave || nearFirstTerrain
 
   return (
-    <div ref={containerRef} style={{ flex: 1, background: '#1a1a1a', overflow: 'hidden', position: 'relative' }}>
+    <div ref={containerRef} style={{ flex: 1, background: '#1a1a1a', overflow: 'hidden', position: 'relative', minWidth: 0, minHeight: 0 }}>
       <Stage
         width={width} height={height}
         onMouseDown={handleMouseDown}
@@ -202,6 +203,7 @@ export function MapCanvas({ selectedElement, onSelect }: Props) {
           onSelect={id => handleSelect('item', id)}
           selectedId={selectedElement?.type === 'item' ? selectedElement.id : null}
         />
+        <GlobalGridLayer width={width} height={height} grid={state.globalGrid} />
         <CaveDrawLayer points={cavePoints} mousePos={activeTool === 'cave' ? mousePos : null} />
         <TerrainDrawLayer
           drawMode={terrainDrawMode}

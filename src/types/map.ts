@@ -20,6 +20,13 @@ export const TERRAIN_PALETTE: Record<TerrainType, TerrainDef> = {
   snow:     { label: 'Snow',          fill: '#ccd8e0', stroke: '#a0b8c8', icon: '❄' },
 }
 
+export interface GridSettings {
+  enabled: boolean
+  size: number   // pixels per cell
+  color?: string // default '#ffffff'
+  opacity?: number // default 0.15
+}
+
 export interface MapRoom {
   id: string
   x: number
@@ -28,6 +35,7 @@ export interface MapRoom {
   height: number
   fill: string
   label?: string
+  grid?: GridSettings
 }
 
 export interface MapCave {
@@ -36,14 +44,15 @@ export interface MapCave {
   points: number[]
   fill: string
   label?: string
+  grid?: GridSettings
 }
 
 export type TerrainDrawMode = 'rect' | 'ellipse' | 'custom'
 
 export type MapTerrain =
-  | { id: string; shape: 'rect';    x: number; y: number; width: number; height: number; terrainType: TerrainType; label?: string }
-  | { id: string; shape: 'ellipse'; x: number; y: number; radiusX: number; radiusY: number; terrainType: TerrainType; label?: string }
-  | { id: string; shape: 'custom';  points: number[]; terrainType: TerrainType; label?: string }
+  | { id: string; shape: 'rect';    x: number; y: number; width: number; height: number; terrainType: TerrainType; label?: string; grid?: GridSettings }
+  | { id: string; shape: 'ellipse'; x: number; y: number; radiusX: number; radiusY: number; terrainType: TerrainType; label?: string; grid?: GridSettings }
+  | { id: string; shape: 'custom';  points: number[]; terrainType: TerrainType; label?: string; grid?: GridSettings }
 
 export interface MapItem {
   id: string
@@ -58,6 +67,7 @@ export interface MapState {
   caves: MapCave[]
   terrain: MapTerrain[]
   items: MapItem[]
+  globalGrid: GridSettings
 }
 
 export interface SelectedElement {

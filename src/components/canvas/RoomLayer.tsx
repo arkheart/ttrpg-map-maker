@@ -2,6 +2,7 @@ import { Layer, Rect, Line, Text } from 'react-konva'
 import type { MapRoom, MapCave } from '@/types/map'
 import { useMapDispatch } from '@/store/mapStore'
 import { useMapTool } from '@/hooks/useMapTool'
+import { RectGrid, PolyGrid } from './ElementGrid'
 
 interface Props {
   rooms: MapRoom[]
@@ -37,6 +38,7 @@ export function RoomLayer({ rooms, caves, onSelect, selectedId }: Props) {
               })
             }}
           />
+          {r.grid && <RectGrid key={`${r.id}-grid`} grid={r.grid} x={r.x} y={r.y} width={r.width} height={r.height} />}
           {r.label && (
             <Text
               key={`${r.id}-label`}
@@ -75,6 +77,7 @@ export function RoomLayer({ rooms, caves, onSelect, selectedId }: Props) {
               e.target.position({ x: 0, y: 0 })
             }}
           />
+          {c.grid && <PolyGrid key={`${c.id}-grid`} grid={c.grid} points={c.points} />}
           {c.label && (
             <Text
               key={`${c.id}-label`}

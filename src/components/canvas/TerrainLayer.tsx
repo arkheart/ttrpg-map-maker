@@ -3,6 +3,7 @@ import type { MapTerrain } from '@/types/map'
 import { TERRAIN_PALETTE } from '@/types/map'
 import { useMapDispatch } from '@/store/mapStore'
 import { useMapTool } from '@/hooks/useMapTool'
+import { RectGrid, EllipseGrid, PolyGrid } from './ElementGrid'
 
 interface Props {
   terrain: MapTerrain[]
@@ -40,6 +41,7 @@ export function TerrainLayer({ terrain, onSelect, selectedId }: Props) {
                 {...sharedHandlers}
                 onDragEnd={e => dispatch({ type: 'UPDATE_TERRAIN', payload: { id: t.id, x: e.target.x(), y: e.target.y() } })}
               />
+              {t.grid && <RectGrid key={`${t.id}-grid`} grid={t.grid} x={t.x} y={t.y} width={t.width} height={t.height} />}
               <Text key={`${t.id}-i`} x={t.x + 4} y={t.y + 4} text={def.icon} fontSize={14} listening={false} />
               {t.label && <Text key={`${t.id}-l`} x={t.x + 4} y={t.y + 22} text={t.label} fontSize={11} fill="#ddd" listening={false} />}
             </>
@@ -58,6 +60,7 @@ export function TerrainLayer({ terrain, onSelect, selectedId }: Props) {
                 {...sharedHandlers}
                 onDragEnd={e => dispatch({ type: 'UPDATE_TERRAIN', payload: { id: t.id, x: e.target.x(), y: e.target.y() } })}
               />
+              {t.grid && <EllipseGrid key={`${t.id}-grid`} grid={t.grid} cx={t.x} cy={t.y} radiusX={t.radiusX} radiusY={t.radiusY} />}
               <Text key={`${t.id}-i`} x={t.x - 8} y={t.y - 10} text={def.icon} fontSize={14} listening={false} />
               {t.label && <Text key={`${t.id}-l`} x={t.x - t.radiusX} y={t.y - t.radiusY + 4} text={t.label} fontSize={11} fill="#ddd" listening={false} />}
             </>
@@ -87,6 +90,7 @@ export function TerrainLayer({ terrain, onSelect, selectedId }: Props) {
                   e.target.position({ x: 0, y: 0 })
                 }}
               />
+              {t.grid && <PolyGrid key={`${t.id}-grid`} grid={t.grid} points={t.points} />}
               <Text key={`${t.id}-i`} x={minX + 4} y={minY + 4} text={def.icon} fontSize={14} listening={false} />
               {t.label && <Text key={`${t.id}-l`} x={minX + 4} y={minY + 22} text={t.label} fontSize={11} fill="#ddd" listening={false} />}
             </>
