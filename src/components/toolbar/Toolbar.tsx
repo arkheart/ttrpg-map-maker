@@ -62,7 +62,7 @@ function ModeBtn({ label, icon, active, onClick }: { label: string; icon: string
   )
 }
 
-export function Toolbar() {
+export function Toolbar({ onExportPng }: { onExportPng?: () => void }) {
   const { activeTool, setActiveTool, activeTerrainType, setActiveTerrainType, terrainDrawMode, setTerrainDrawMode, roomDrawMode, setRoomDrawMode } = useMapTool()
   const dispatch = useMapDispatch()
   const { globalGrid } = useMapState()
@@ -127,6 +127,13 @@ export function Toolbar() {
         )}
 
         <div style={{ flex: 1 }} />
+
+        <button
+          onClick={onExportPng}
+          style={{ padding: '5px 12px', background: '#1a3a1a', color: '#8fbc8f', border: '1px solid #3a6a3a', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}
+        >
+          Save PNG
+        </button>
 
         <button
           onClick={() => dispatch({ type: 'CLEAR_ALL' })}

@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from 'react'
+import { useRef, useState, useEffect, useImperativeHandle, forwardRef } from 'react'
 import { Stage } from 'react-konva'
 import type { KonvaEventObject } from 'konva/lib/Node'
 import type Konva from 'konva'
@@ -25,6 +25,9 @@ const ITEM_SYMBOLS: Record<string, string> = {
   door: '🚪', chest: '📦', trap: '⚠', stairs: '🔼', torch: '🕯', monster: '👾',
 }
 
+const EXPORT_PADDING = 40
+const EXPORT_PIXEL_RATIO = 2
+
 interface DragStart { startX: number; startY: number }
 
 interface Props {
@@ -32,7 +35,11 @@ interface Props {
   onSelect: (el: SelectedElement | null) => void
 }
 
-export function MapCanvas({ selectedElement, onSelect }: Props) {
+export interface MapCanvasHandle {
+  exportPng: () => void
+}
+
+export const MapCanvas = forwardRef<MapCanvasHandle, Props>(function MapCanvas({ selectedElement, onSelect }, ref) {
   const containerRef = useRef<HTMLDivElement>(null)
   const stageRef = useRef<Konva.Stage>(null)
   const { width, height } = useCanvasSize(containerRef)
@@ -267,6 +274,63 @@ export function MapCanvas({ selectedElement, onSelect }: Props) {
     else if (activeTool === 'select') onSelect({ type, id })
   }
 
+  useImperativeHandle(ref, () => ({
+    exportPng() {
+      const stage = stageRef.current
+      if (!stage) return
+      // Compute bounding box of all map content
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+      for (const r of state.rooms) {
+        if (r.shape === 'rect' || !r.shape) {
+          minX = Math.min(minX, r.x); minY = Math.min(minY, r.y)
+          maxX = Math.max(maxX, r.x + r.width); maxY = Math.max(maxY, r.y + r.height)
+        } else if (r.shape === 'ellipse') {
+          minX = Math.min(minX, r.x - r.radiusX); minY = Math.min(minY, r.y - r.radiusY)
+          maxX = Math.max(maxX, r.x + r.radiusX); maxY = Math.max(maxY, r.y + r.radiusY)
+        } else if (r.shape === 'custom') {
+          for (let i = 0; i < r.points.length; i += 2) {
+            minX = Math.min(minX, r.points[i]); maxX = Math.max(maxX, r.points[i])
+            minY = Math.min(minY, r.points[i + 1]); maxY = Math.max(maxY, r.points[i + 1])
+          }
+        }
+      }
+      for (const c of state.caves) {
+        for (let i = 0; i < c.points.length; i += 2) {
+          minX = Math.min(minX, c.points[i]); maxX = Math.max(maxX, c.points[i])
+          minY = Math.min(minY, c.points[i + 1]); maxY = Math.max(maxY, c.points[i + 1])
+        }
+      }
+      for (const t of state.terrain) {
+        if (t.shape === 'rect') {
+          minX = Math.min(minX, t.x); minY = Math.min(minY, t.y)
+          maxX = Math.max(maxX, t.x + t.width); maxY = Math.max(maxY, t.y + t.height)
+        } else if (t.shape === 'ellipse') {
+          minX = Math.min(minX, t.x - t.radiusX); minY = Math.min(minY, t.y - t.radiusY)
+          maxX = Math.max(maxX, t.x + t.radiusX); maxY = Math.max(maxY, t.y + t.radiusY)
+        } else if (t.shape === 'custom') {
+          for (let i = 0; i < t.points.length; i += 2) {
+            minX = Math.min(minX, t.points[i]); maxX = Math.max(maxX, t.points[i])
+            minY = Math.min(minY, t.points[i + 1]); maxY = Math.max(maxY, t.points[i + 1])
+          }
+        }
+      }
+      for (const item of state.items) {
+        minX = Math.min(minX, item.x); minY = Math.min(minY, item.y)
+        maxX = Math.max(maxX, item.x + 24); maxY = Math.max(maxY, item.y + 24)
+      }
+      if (!isFinite(minX)) { alert('Nothing to export — draw something first!'); return }
+      const x = minX - EXPORT_PADDING
+      const y = minY - EXPORT_PADDING
+      const width = (maxX - minX) + EXPORT_PADDING * 2
+      const height = (maxY - minY) + EXPORT_PADDING * 2
+      const dataURL = stage.toDataURL({ x, y, width, height, pixelRatio: EXPORT_PIXEL_RATIO })
+      const link = document.createElement('a')
+      link.download = 'map.png'
+      link.href = dataURL
+      link.click()
+    }
+  }))
+
   const nearFirstCave = activeTool === 'cave' && mousePos ? isNearFirst(cavePoints, mousePos.x, mousePos.y) : false
   const nearFirstRoom = activeTool === 'room' && roomDrawMode === 'custom' && mousePos ? isNearFirst(roomPoints, mousePos.x, mousePos.y) : false
   const nearFirstTerrain = activeTool === 'terrain' && terrainDrawMode === 'custom' && mousePos ? isNearFirst(terrainPoints, mousePos.x, mousePos.y) : false
@@ -365,4 +429,4 @@ export function MapCanvas({ selectedElement, onSelect }: Props) {
       )}
     </div>
   )
-}
+})
