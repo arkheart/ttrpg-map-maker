@@ -10,20 +10,26 @@ export interface SavedMapEntry {
   state: MapState
 }
 
-export function migrateState(parsed: MapState): MapState {
+export function migrateState(raw: MapState): MapState {
+  const parsed = { ...raw }
   if (!parsed.globalGrid) {
     parsed.globalGrid = { enabled: false, size: 32, color: '#ffffff', opacity: 0.15 }
   }
-  if (parsed.rooms) {
-    parsed.rooms = parsed.rooms.map((r: MapRoom) => ('shape' in r ? r : { ...r, shape: 'rect' as const }))
-  }
+  const rooms = parsed.rooms ?? []
+  parsed.rooms = rooms.map((r: MapRoom) => ('shape' in r ? r : { ...r, shape: 'rect' as const }))
+  const caves = parsed.caves ?? []
+  parsed.caves = caves
+  const terrain = parsed.terrain ?? []
+  parsed.terrain = terrain
+  const items = parsed.items ?? []
+  parsed.items = items
   if (!parsed.layerOrder) {
     // Build order from existing arrays: terrain first, then rooms, caves, items
     parsed.layerOrder = [
-      ...parsed.terrain.map(t => t.id),
-      ...parsed.rooms.map(r => r.id),
-      ...parsed.caves.map(c => c.id),
-      ...parsed.items.map(i => i.id),
+      ...terrain.map(t => t.id),
+      ...rooms.map(r => r.id),
+      ...caves.map(c => c.id),
+      ...items.map(i => i.id),
     ]
   }
   return parsed
@@ -190,7 +196,7 @@ export function mapReducer(state: MapState, action: Action): MapState {
     case 'LOAD_STATE':
       return action.payload
     case 'CLEAR_ALL':
-      localStorage.removeItem('ttrpg-map-state')
+      localStorage.removeItem(STORAGE_KEY)
       return initialState
     default:
       return state

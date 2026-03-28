@@ -38,6 +38,26 @@ describe('migrateState', () => {
     expect(migrateState(state).globalGrid).toEqual({ enabled: true, size: 64, color: '#000', opacity: 0.5 })
   })
 
+  it('does not mutate the input object', () => {
+    const partial = { ...baseState, globalGrid: undefined } as unknown as MapState
+    const before = JSON.stringify(partial)
+    migrateState(partial)
+    expect(JSON.stringify(partial)).toBe(before)
+  })
+
+  it('handles missing terrain/caves/items arrays without throwing', () => {
+    const partial = {
+      rooms: [],
+      globalGrid: undefined,
+      layerOrder: undefined,
+    } as unknown as MapState
+    expect(() => migrateState(partial)).not.toThrow()
+    const result = migrateState(partial)
+    expect(result.terrain).toEqual([])
+    expect(result.caves).toEqual([])
+    expect(result.items).toEqual([])
+  })
+
   it('adds default layerOrder when missing', () => {
     const partial = {
       ...baseState,
@@ -124,6 +144,19 @@ describe('saveMapToSlot / loadSavedMaps / deleteMapSlot', () => {
     saveMapToSlot('X', baseState)
     deleteMapSlot('does-not-exist')
     expect(loadSavedMaps()).toHaveLength(1)
+  })
+
+  it('loadSavedMaps returns empty array on invalid JSON', () => {
+    localStorage.setItem('ttrpg-saved-maps', '{bad json')
+    expect(loadSavedMaps()).toEqual([])
+  })
+
+  it('saveMapToSlot records a recent savedAt timestamp', () => {
+    const before = Date.now()
+    const entry = saveMapToSlot('Timestamped', baseState)
+    const after = Date.now()
+    expect(entry.savedAt).toBeGreaterThanOrEqual(before)
+    expect(entry.savedAt).toBeLessThanOrEqual(after)
   })
 })
 

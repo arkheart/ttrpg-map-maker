@@ -2,14 +2,14 @@ import { describe, it, expect } from 'vitest'
 import { mapReducer } from '../mapStore'
 import type { MapState, MapRoom, MapCave, MapTerrain, MapItem } from '@/types/map'
 
-const emptyState: MapState = {
-  rooms: [],
-  caves: [],
-  terrain: [],
-  items: [],
-  globalGrid: { enabled: false, size: 32, color: '#ffffff', opacity: 0.15 },
-  layerOrder: [],
-}
+const emptyState: MapState = Object.freeze({
+  rooms: Object.freeze([]) as MapState['rooms'],
+  caves: Object.freeze([]) as MapState['caves'],
+  terrain: Object.freeze([]) as MapState['terrain'],
+  items: Object.freeze([]) as MapState['items'],
+  globalGrid: Object.freeze({ enabled: false, size: 32, color: '#ffffff', opacity: 0.15 }),
+  layerOrder: Object.freeze([]) as string[],
+}) as MapState
 
 const rectRoom: MapRoom = { id: 'r1', shape: 'rect', x: 10, y: 20, width: 100, height: 80, fill: '#333' }
 const cave: MapCave = { id: 'c1', points: [0, 0, 10, 10, 20, 0], fill: '#444' }
@@ -183,5 +183,11 @@ describe('mapReducer — CLEAR_ALL', () => {
     const state = mapReducer(base, { type: 'CLEAR_ALL' })
     expect(state.rooms).toHaveLength(0)
     expect(state.layerOrder).toHaveLength(0)
+  })
+
+  it('removes ttrpg-map-state from localStorage', () => {
+    localStorage.setItem('ttrpg-map-state', '{"rooms":[]}')
+    mapReducer(emptyState, { type: 'CLEAR_ALL' })
+    expect(localStorage.getItem('ttrpg-map-state')).toBeNull()
   })
 })
