@@ -56,6 +56,7 @@ export const MapCanvas = forwardRef(function MapCanvas({ selectedElement, onSele
     const isPainting = useRef(false);
     const paintPointsRef = useRef([]);
     const [paintPreview, setPaintPreview] = useState([]);
+    const [isPaintingState, setIsPaintingState] = useState(false);
     const getPos = (e) => {
         const stage = e.target.getStage();
         const pointer = stage.getPointerPosition();
@@ -102,17 +103,14 @@ export const MapCanvas = forwardRef(function MapCanvas({ selectedElement, onSele
     };
     const commitPaintCave = () => {
         const pts = paintPointsRef.current;
-        if (pts.length < 6) {
-            isPainting.current = false;
-            paintPointsRef.current = [];
-            setPaintPreview([]);
-            return;
-        }
-        const simplified = rdpSimplify(pts, 3);
-        dispatch({ type: 'ADD_CAVE', payload: { id: crypto.randomUUID(), points: simplified, fill: CAVE_FILL } });
         isPainting.current = false;
+        setIsPaintingState(false);
         paintPointsRef.current = [];
         setPaintPreview([]);
+        if (pts.length < 6)
+            return;
+        const simplified = rdpSimplify(pts, 3);
+        dispatch({ type: 'ADD_CAVE', payload: { id: crypto.randomUUID(), points: simplified, fill: CAVE_FILL } });
     };
     const commitTerrainCustom = (points) => {
         if (points.length < 6)
@@ -262,6 +260,7 @@ export const MapCanvas = forwardRef(function MapCanvas({ selectedElement, onSele
         if (activeTool === 'cave' && caveDrawMode === 'paint') {
             const pos = getPos(e);
             isPainting.current = true;
+            setIsPaintingState(true);
             paintPointsRef.current = [pos.x, pos.y];
             setPaintPreview([pos.x, pos.y]);
             return;
@@ -421,7 +420,7 @@ export const MapCanvas = forwardRef(function MapCanvas({ selectedElement, onSele
                     background: 'rgba(0,0,0,0.7)', color: '#aaa',
                     padding: '4px 12px', borderRadius: '4px', fontSize: '12px', pointerEvents: 'none',
                 }, children: activeTool === 'cave' && caveDrawMode === 'paint'
-                    ? (isPainting.current ? 'Release to finish cave' : 'Click and drag to paint a cave')
+                    ? (isPaintingState ? 'Release to finish cave' : 'Click and drag to paint a cave')
                     : activePoints.length === 0
                         ? 'Click to place first vertex'
                         : nearFirst_

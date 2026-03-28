@@ -1,20 +1,21 @@
 import { createContext, useContext, useReducer } from 'react';
 const STORAGE_KEY = 'ttrpg-map-state';
+const MAPS_KEY = 'ttrpg-saved-maps';
+function migrateState(parsed) {
+    if (!parsed.globalGrid) {
+        parsed.globalGrid = { enabled: false, size: 32, color: '#ffffff', opacity: 0.15 };
+    }
+    if (parsed.rooms) {
+        parsed.rooms = parsed.rooms.map((r) => ('shape' in r ? r : { ...r, shape: 'rect' }));
+    }
+    return parsed;
+}
 export function loadState() {
     try {
         const raw = localStorage.getItem(STORAGE_KEY);
         if (!raw)
             return undefined;
-        const parsed = JSON.parse(raw);
-        // Migrate old saves that lack globalGrid
-        if (!parsed.globalGrid) {
-            parsed.globalGrid = { enabled: false, size: 32, color: '#ffffff', opacity: 0.15 };
-        }
-        // Migrate old rooms that lack shape field
-        if (parsed.rooms) {
-            parsed.rooms = parsed.rooms.map((r) => ('shape' in r ? r : { ...r, shape: 'rect' }));
-        }
-        return parsed;
+        return migrateState(JSON.parse(raw));
     }
     catch {
         return undefined;
@@ -27,6 +28,43 @@ export function saveState(state) {
     catch {
         // storage quota exceeded — silently ignore
     }
+}
+export function loadSavedMaps() {
+    try {
+        const raw = localStorage.getItem(MAPS_KEY);
+        if (!raw)
+            return [];
+        return JSON.parse(raw);
+    }
+    catch {
+        return [];
+    }
+}
+export function saveMapToSlot(name, state, existingId) {
+    const maps = loadSavedMaps();
+    const id = existingId ?? crypto.randomUUID();
+    const entry = { id, name, savedAt: Date.now(), state };
+    const idx = maps.findIndex(m => m.id === id);
+    if (idx >= 0) {
+        maps[idx] = entry;
+    }
+    else {
+        maps.unshift(entry);
+    }
+    try {
+        localStorage.setItem(MAPS_KEY, JSON.stringify(maps));
+    }
+    catch {
+        // storage quota exceeded
+    }
+    return entry;
+}
+export function deleteMapSlot(id) {
+    const maps = loadSavedMaps().filter(m => m.id !== id);
+    try {
+        localStorage.setItem(MAPS_KEY, JSON.stringify(maps));
+    }
+    catch { }
 }
 const DEFAULT_GLOBAL_GRID = { enabled: false, size: 32, color: '#ffffff', opacity: 0.15 };
 const initialState = {
@@ -76,6 +114,8 @@ function mapReducer(state, action) {
             };
         case 'SET_GLOBAL_GRID':
             return { ...state, globalGrid: { ...state.globalGrid, ...action.payload } };
+        case 'LOAD_STATE':
+            return action.payload;
         case 'CLEAR_ALL':
             localStorage.removeItem('ttrpg-map-state');
             return initialState;

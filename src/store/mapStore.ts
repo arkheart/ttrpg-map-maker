@@ -1,20 +1,30 @@
 import { createContext, useContext, useReducer, Dispatch } from 'react'
 const STORAGE_KEY = 'ttrpg-map-state'
+const MAPS_KEY = 'ttrpg-saved-maps'
+const CURRENT_MAP_KEY = 'ttrpg-current-map'
+
+export interface SavedMapEntry {
+  id: string
+  name: string
+  savedAt: number
+  state: MapState
+}
+
+function migrateState(parsed: MapState): MapState {
+  if (!parsed.globalGrid) {
+    parsed.globalGrid = { enabled: false, size: 32, color: '#ffffff', opacity: 0.15 }
+  }
+  if (parsed.rooms) {
+    parsed.rooms = parsed.rooms.map((r: MapRoom) => ('shape' in r ? r : { ...r, shape: 'rect' as const }))
+  }
+  return parsed
+}
 
 export function loadState(): MapState | undefined {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return undefined
-    const parsed = JSON.parse(raw) as MapState
-    // Migrate old saves that lack globalGrid
-    if (!parsed.globalGrid) {
-      parsed.globalGrid = { enabled: false, size: 32, color: '#ffffff', opacity: 0.15 }
-    }
-    // Migrate old rooms that lack shape field
-    if (parsed.rooms) {
-      parsed.rooms = parsed.rooms.map((r: MapRoom) => ('shape' in r ? r : { ...r, shape: 'rect' as const }))
-    }
-    return parsed
+    return migrateState(JSON.parse(raw) as MapState)
   } catch {
     return undefined
   }
@@ -26,6 +36,60 @@ export function saveState(state: MapState) {
   } catch {
     // storage quota exceeded — silently ignore
   }
+}
+
+export function loadSavedMaps(): SavedMapEntry[] {
+  try {
+    const raw = localStorage.getItem(MAPS_KEY)
+    if (!raw) return []
+    return JSON.parse(raw) as SavedMapEntry[]
+  } catch {
+    return []
+  }
+}
+
+export interface CurrentMapMeta { id: string; name: string }
+
+export function loadCurrentMapMeta(): CurrentMapMeta | undefined {
+  try {
+    const raw = localStorage.getItem(CURRENT_MAP_KEY)
+    return raw ? JSON.parse(raw) : undefined
+  } catch {
+    return undefined
+  }
+}
+
+export function saveCurrentMapMeta(meta: CurrentMapMeta | undefined) {
+  if (meta) {
+    localStorage.setItem(CURRENT_MAP_KEY, JSON.stringify(meta))
+  } else {
+    localStorage.removeItem(CURRENT_MAP_KEY)
+  }
+}
+
+export function saveMapToSlot(name: string, state: MapState, existingId?: string): SavedMapEntry {
+  const maps = loadSavedMaps()
+  const id = existingId ?? crypto.randomUUID()
+  const entry: SavedMapEntry = { id, name, savedAt: Date.now(), state }
+  const idx = maps.findIndex(m => m.id === id)
+  if (idx >= 0) {
+    maps[idx] = entry
+  } else {
+    maps.unshift(entry)
+  }
+  try {
+    localStorage.setItem(MAPS_KEY, JSON.stringify(maps))
+  } catch {
+    // storage quota exceeded
+  }
+  return entry
+}
+
+export function deleteMapSlot(id: string) {
+  const maps = loadSavedMaps().filter(m => m.id !== id)
+  try {
+    localStorage.setItem(MAPS_KEY, JSON.stringify(maps))
+  } catch {}
 }
 import type { MapState, MapRoom, MapCave, MapTerrain, MapItem, TerrainType, GridSettings } from '@/types/map'
 
@@ -40,6 +104,7 @@ type Action =
   | { type: 'UPDATE_ITEM'; payload: Partial<MapItem> & { id: string } }
   | { type: 'DELETE_ELEMENT'; payload: { id: string } }
   | { type: 'SET_GLOBAL_GRID'; payload: Partial<GridSettings> }
+  | { type: 'LOAD_STATE'; payload: MapState }
   | { type: 'CLEAR_ALL' }
 
 const DEFAULT_GLOBAL_GRID: GridSettings = { enabled: false, size: 32, color: '#ffffff', opacity: 0.15 }
@@ -100,6 +165,8 @@ function mapReducer(state: MapState, action: Action): MapState {
       }
     case 'SET_GLOBAL_GRID':
       return { ...state, globalGrid: { ...state.globalGrid, ...action.payload } }
+    case 'LOAD_STATE':
+      return action.payload
     case 'CLEAR_ALL':
       localStorage.removeItem('ttrpg-map-state')
       return initialState

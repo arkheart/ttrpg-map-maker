@@ -1,3 +1,4 @@
+import { useState, useRef, useEffect } from 'react'
 import { useMapTool } from '@/hooks/useMapTool'
 import { useMapState, useMapDispatch } from '@/store/mapStore'
 import type { ToolType, TerrainType, TerrainDrawMode, RoomDrawMode, CaveDrawMode } from '@/types/map'
@@ -67,13 +68,64 @@ function ModeBtn({ label, icon, active, onClick }: { label: string; icon: string
   )
 }
 
-export function Toolbar({ onExportPng }: { onExportPng?: () => void }) {
+interface ToolbarProps {
+  onExportPng?: () => void
+  onSaveMap?: (name: string) => void
+  onNewMap?: () => void
+  onOpenMaps?: () => void
+  currentMapName?: string
+  currentMapId?: string
+}
+
+export function Toolbar({ onExportPng, onSaveMap, onNewMap, onOpenMaps, currentMapName, currentMapId }: ToolbarProps) {
   const { activeTool, setActiveTool, activeTerrainType, setActiveTerrainType, terrainDrawMode, setTerrainDrawMode, roomDrawMode, setRoomDrawMode, caveDrawMode, setCaveDrawMode } = useMapTool()
   const dispatch = useMapDispatch()
   const { globalGrid } = useMapState()
+  const [showFirstSaveDialog, setShowFirstSaveDialog] = useState(false)
+  const [saveName, setSaveName] = useState('')
+  const [renamingInline, setRenamingInline] = useState(false)
+  const [renameValue, setRenameValue] = useState('')
+  const saveInputRef = useRef<HTMLInputElement>(null)
+  const renameInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (showFirstSaveDialog) {
+      setSaveName(currentMapName ?? 'Untitled Map')
+      setTimeout(() => saveInputRef.current?.select(), 0)
+    }
+  }, [showFirstSaveDialog, currentMapName])
+
+  useEffect(() => {
+    if (renamingInline) {
+      setRenameValue(currentMapName ?? 'Untitled Map')
+      setTimeout(() => renameInputRef.current?.select(), 0)
+    }
+  }, [renamingInline, currentMapName])
+
+  function handleSaveClick() {
+    if (currentMapId) {
+      // Already saved — just overwrite
+      onSaveMap?.(currentMapName ?? 'Untitled Map')
+    } else {
+      // New map — prompt for a name first
+      setShowFirstSaveDialog(true)
+    }
+  }
+
+  function handleFirstSaveSubmit() {
+    const name = saveName.trim() || 'Untitled Map'
+    onSaveMap?.(name)
+    setShowFirstSaveDialog(false)
+  }
+
+  function handleRenameSubmit() {
+    const name = renameValue.trim() || 'Untitled Map'
+    onSaveMap?.(name)
+    setRenamingInline(false)
+  }
 
   return (
-    <div style={{ background: '#252525', borderBottom: '1px solid #333', flexShrink: 0 }}>
+    <div style={{ background: '#252525', borderBottom: '1px solid #333', flexShrink: 0, position: 'relative' }}>
 
       {/* ── Main bar ── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '6px 12px' }}>
@@ -133,6 +185,52 @@ export function Toolbar({ onExportPng }: { onExportPng?: () => void }) {
 
         <div style={{ flex: 1 }} />
 
+        {/* Current map name — click to rename */}
+        {renamingInline ? (
+          <input
+            ref={renameInputRef}
+            value={renameValue}
+            onChange={e => setRenameValue(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') handleRenameSubmit(); if (e.key === 'Escape') setRenamingInline(false) }}
+            onBlur={handleRenameSubmit}
+            style={{ padding: '3px 6px', background: '#333', color: '#fff', border: '1px solid #555', borderRadius: '4px', fontSize: '12px', width: '120px' }}
+          />
+        ) : (
+          <span
+            title="Click to rename"
+            onClick={() => setRenamingInline(true)}
+            style={{ fontSize: '12px', color: '#888', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'text', borderBottom: '1px dashed #444', paddingBottom: '1px' }}
+          >
+            {currentMapName}
+          </span>
+        )}
+
+        <div style={{ width: '1px', height: '20px', background: '#444', margin: '0 4px' }} />
+
+        <button
+          onClick={handleSaveClick}
+          title={currentMapId ? `Save "${currentMapName}"` : 'Save map (choose a name)'}
+          style={{ padding: '5px 12px', background: '#1a3040', color: '#7ac', border: '1px solid #2a5070', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}
+        >
+          Save Map
+        </button>
+
+        <button
+          onClick={onOpenMaps}
+          style={{ padding: '5px 12px', background: '#2a2a2a', color: '#aaa', border: '1px solid #444', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}
+        >
+          Maps
+        </button>
+
+        <button
+          onClick={onNewMap}
+          style={{ padding: '5px 12px', background: '#2a2a1a', color: '#cc9', border: '1px solid #554', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}
+        >
+          New Map
+        </button>
+
+        <div style={{ width: '1px', height: '20px', background: '#444', margin: '0 4px' }} />
+
         <button
           onClick={onExportPng}
           style={{ padding: '5px 12px', background: '#1a3a1a', color: '#8fbc8f', border: '1px solid #3a6a3a', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}
@@ -147,6 +245,40 @@ export function Toolbar({ onExportPng }: { onExportPng?: () => void }) {
           Clear All
         </button>
       </div>
+
+      {/* First-save dialog (new unsaved map) */}
+      {showFirstSaveDialog && (
+        <div style={{
+          position: 'absolute', top: '44px', right: '8px', zIndex: 200,
+          background: '#252525', border: '1px solid #444', borderRadius: '6px',
+          padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px', width: '220px',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
+        }}>
+          <span style={{ fontSize: '12px', color: '#aaa' }}>Name this map:</span>
+          <input
+            ref={saveInputRef}
+            value={saveName}
+            onChange={e => setSaveName(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') handleFirstSaveSubmit(); if (e.key === 'Escape') setShowFirstSaveDialog(false) }}
+            style={{ padding: '5px 8px', background: '#333', color: '#fff', border: '1px solid #555', borderRadius: '4px', fontSize: '13px' }}
+            placeholder="Map name"
+          />
+          <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
+            <button
+              onClick={() => setShowFirstSaveDialog(false)}
+              style={{ padding: '4px 10px', background: '#2a2a2a', color: '#888', border: '1px solid #444', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleFirstSaveSubmit}
+              style={{ padding: '4px 10px', background: '#1a3040', color: '#7ac', border: '1px solid #2a5070', borderRadius: '4px', cursor: 'pointer', fontSize: '12px', fontWeight: 600 }}
+            >
+              Save
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── Secondary bar (always present, fixed height) ── */}
       <div style={subRowBase}>
