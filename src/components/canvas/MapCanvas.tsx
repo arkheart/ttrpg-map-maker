@@ -38,7 +38,7 @@ export function MapCanvas({ selectedElement, onSelect }: Props) {
   const { width, height } = useCanvasSize(containerRef)
   const state = useMapState()
   const dispatch = useMapDispatch()
-  const { activeTool, activeTerrainType, terrainDrawMode } = useMapTool()
+  const { activeTool, activeTerrainType, terrainDrawMode, roomDrawMode } = useMapTool()
 
   // Viewport state
   const [scale, setScale] = useState(1)
@@ -54,13 +54,14 @@ export function MapCanvas({ selectedElement, onSelect }: Props) {
     return () => { window.removeEventListener('keydown', onKeyDown); window.removeEventListener('keyup', onKeyUp) }
   }, [])
 
-  // Drag-draw state (room, terrain rect/ellipse)
+  // Drag-draw state (rect/ellipse drag tools)
   const [dragStart, setDragStart] = useState<DragStart | null>(null)
   const [previewRect, setPreviewRect] = useState<{ x: number; y: number; w: number; h: number } | null>(null)
 
-  // Polygon state (cave + terrain custom)
+  // Polygon state
   const [cavePoints, setCavePoints] = useState<number[]>([])
   const [terrainPoints, setTerrainPoints] = useState<number[]>([])
+  const [roomPoints, setRoomPoints] = useState<number[]>([])
   const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null)
 
   const getPos = (e: KonvaEventObject<MouseEvent>) => {
@@ -91,6 +92,13 @@ export function MapCanvas({ selectedElement, onSelect }: Props) {
     setMousePos(null)
   }
 
+  const commitRoomCustom = (points: number[]) => {
+    if (points.length < 6) return
+    dispatch({ type: 'ADD_ROOM', payload: { id: crypto.randomUUID(), shape: 'custom', points, fill: ROOM_FILL } })
+    setRoomPoints([])
+    setMousePos(null)
+  }
+
   // ── Mouse move ─────────────────────────────────────────────────
 
   const handleMouseMove = (e: KonvaEventObject<MouseEvent>) => {
@@ -106,7 +114,12 @@ export function MapCanvas({ selectedElement, onSelect }: Props) {
 
     const pos = getPos(e)
 
-    if (activeTool === 'cave' || (activeTool === 'terrain' && terrainDrawMode === 'custom')) {
+    const isPolygonMode =
+      activeTool === 'cave' ||
+      (activeTool === 'terrain' && terrainDrawMode === 'custom') ||
+      (activeTool === 'room' && roomDrawMode === 'custom')
+
+    if (isPolygonMode) {
       setMousePos(pos)
       return
     }
@@ -164,6 +177,13 @@ export function MapCanvas({ selectedElement, onSelect }: Props) {
       return
     }
 
+    // Room custom polygon
+    if (activeTool === 'room' && roomDrawMode === 'custom') {
+      if (isNearFirst(roomPoints, pos.x, pos.y)) commitRoomCustom(roomPoints)
+      else setRoomPoints(prev => [...prev, pos.x, pos.y])
+      return
+    }
+
     // Terrain custom polygon
     if (activeTool === 'terrain' && terrainDrawMode === 'custom') {
       if (isNearFirst(terrainPoints, pos.x, pos.y)) commitTerrainCustom(terrainPoints)
@@ -189,6 +209,9 @@ export function MapCanvas({ selectedElement, onSelect }: Props) {
     if (activeTool === 'cave' && cavePoints.length >= 6) {
       commitCave(cavePoints.slice(0, -2))
     }
+    if (activeTool === 'room' && roomDrawMode === 'custom' && roomPoints.length >= 6) {
+      commitRoomCustom(roomPoints.slice(0, -2))
+    }
     if (activeTool === 'terrain' && terrainDrawMode === 'custom' && terrainPoints.length >= 6) {
       commitTerrainCustom(terrainPoints.slice(0, -2))
     }
@@ -205,7 +228,7 @@ export function MapCanvas({ selectedElement, onSelect }: Props) {
     }
 
     const isDragTool =
-      activeTool === 'room' ||
+      (activeTool === 'room' && (roomDrawMode === 'rect' || roomDrawMode === 'ellipse')) ||
       (activeTool === 'terrain' && (terrainDrawMode === 'rect' || terrainDrawMode === 'ellipse'))
     if (!isDragTool) return
     if (e.target !== e.target.getStage()) return
@@ -222,8 +245,10 @@ export function MapCanvas({ selectedElement, onSelect }: Props) {
 
     if (w >= 5 && h >= 5) {
       const id = crypto.randomUUID()
-      if (activeTool === 'room') {
-        dispatch({ type: 'ADD_ROOM', payload: { id, x, y, width: w, height: h, fill: ROOM_FILL } })
+      if (activeTool === 'room' && roomDrawMode === 'rect') {
+        dispatch({ type: 'ADD_ROOM', payload: { id, shape: 'rect', x, y, width: w, height: h, fill: ROOM_FILL } })
+      } else if (activeTool === 'room' && roomDrawMode === 'ellipse') {
+        dispatch({ type: 'ADD_ROOM', payload: { id, shape: 'ellipse', x: x + w / 2, y: y + h / 2, radiusX: w / 2, radiusY: h / 2, fill: ROOM_FILL } })
       } else if (activeTool === 'terrain' && terrainDrawMode === 'rect') {
         dispatch({ type: 'ADD_TERRAIN', payload: { id, shape: 'rect', x, y, width: w, height: h, terrainType: activeTerrainType } })
       } else if (activeTool === 'terrain' && terrainDrawMode === 'ellipse') {
@@ -243,10 +268,24 @@ export function MapCanvas({ selectedElement, onSelect }: Props) {
   }
 
   const nearFirstCave = activeTool === 'cave' && mousePos ? isNearFirst(cavePoints, mousePos.x, mousePos.y) : false
+  const nearFirstRoom = activeTool === 'room' && roomDrawMode === 'custom' && mousePos ? isNearFirst(roomPoints, mousePos.x, mousePos.y) : false
   const nearFirstTerrain = activeTool === 'terrain' && terrainDrawMode === 'custom' && mousePos ? isNearFirst(terrainPoints, mousePos.x, mousePos.y) : false
-  const showHint = activeTool === 'cave' || (activeTool === 'terrain' && terrainDrawMode === 'custom')
-  const activePoints = activeTool === 'cave' ? cavePoints : terrainPoints
-  const nearFirst_ = nearFirstCave || nearFirstTerrain
+  const nearFirst_ = nearFirstCave || nearFirstRoom || nearFirstTerrain
+
+  const showHint =
+    activeTool === 'cave' ||
+    (activeTool === 'room' && roomDrawMode === 'custom') ||
+    (activeTool === 'terrain' && terrainDrawMode === 'custom')
+
+  const activePoints =
+    activeTool === 'cave' ? cavePoints :
+    activeTool === 'room' ? roomPoints :
+    terrainPoints
+
+  // Ellipse preview check — suppress dashed rect overlay when drawing ellipses
+  const isEllipseMode =
+    (activeTool === 'room' && roomDrawMode === 'ellipse') ||
+    (activeTool === 'terrain' && terrainDrawMode === 'ellipse')
 
   return (
     <div ref={containerRef} style={{ flex: 1, background: '#1a1a1a', overflow: 'hidden', position: 'relative', minWidth: 0, minHeight: 0 }}>
@@ -282,16 +321,23 @@ export function MapCanvas({ selectedElement, onSelect }: Props) {
         />
         <GlobalGridLayer width={width} height={height} scale={scale} stagePos={stagePos} grid={state.globalGrid} />
         <CaveDrawLayer points={cavePoints} mousePos={activeTool === 'cave' ? mousePos : null} />
+        <CaveDrawLayer points={roomPoints} mousePos={activeTool === 'room' && roomDrawMode === 'custom' ? mousePos : null} color="#00aaff" />
         <TerrainDrawLayer
           drawMode={terrainDrawMode}
           preview={activeTool === 'terrain' ? previewRect : null}
           points={activeTool === 'terrain' && terrainDrawMode === 'custom' ? terrainPoints : []}
           mousePos={activeTool === 'terrain' ? mousePos : null}
         />
+        <TerrainDrawLayer
+          drawMode={roomDrawMode}
+          preview={activeTool === 'room' && (roomDrawMode === 'rect' || roomDrawMode === 'ellipse') ? previewRect : null}
+          points={[]}
+          mousePos={null}
+        />
       </Stage>
 
-      {/* Rect preview overlay (room + terrain rect) */}
-      {previewRect && previewRect.w > 2 && previewRect.h > 2 && terrainDrawMode !== 'ellipse' && (
+      {/* Rect preview overlay */}
+      {previewRect && previewRect.w > 2 && previewRect.h > 2 && !isEllipseMode && (
         <div style={{
           position: 'absolute',
           left: previewRect.x * scale + stagePos.x,

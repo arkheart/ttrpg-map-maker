@@ -3,9 +3,10 @@ import { Layer, Line, Circle } from 'react-konva'
 interface Props {
   points: number[]       // flat [x0,y0,x1,y1,...] committed vertices
   mousePos: { x: number; y: number } | null
+  color?: string         // stroke/fill accent color, defaults to cave brown
 }
 
-export function CaveDrawLayer({ points, mousePos }: Props) {
+export function CaveDrawLayer({ points, mousePos, color = '#aaa' }: Props) {
   if (points.length === 0) return null
 
   // Preview line from last vertex to current mouse position
@@ -20,7 +21,7 @@ export function CaveDrawLayer({ points, mousePos }: Props) {
         <Line
           points={points}
           fill="rgba(45, 36, 16, 0.5)"
-          stroke="#aaa"
+          stroke={color}
           strokeWidth={2}
           closed
         />
@@ -28,7 +29,7 @@ export function CaveDrawLayer({ points, mousePos }: Props) {
       {/* Outline of placed edges */}
       <Line
         points={points}
-        stroke="#aaa"
+        stroke={color}
         strokeWidth={2}
         closed={false}
       />

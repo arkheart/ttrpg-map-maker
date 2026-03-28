@@ -1,10 +1,10 @@
 import { useMapTool } from '@/hooks/useMapTool'
 import { useMapState, useMapDispatch } from '@/store/mapStore'
-import type { ToolType, TerrainType, TerrainDrawMode } from '@/types/map'
+import type { ToolType, TerrainType, TerrainDrawMode, RoomDrawMode } from '@/types/map'
 import { TERRAIN_PALETTE } from '@/types/map'
 import { ToolButton } from './ToolButton'
 
-const DRAW_MODES: { mode: TerrainDrawMode; label: string; icon: string }[] = [
+const SHAPE_MODES: { mode: TerrainDrawMode | RoomDrawMode; label: string; icon: string }[] = [
   { mode: 'rect',    label: 'Square',  icon: '⬜' },
   { mode: 'ellipse', label: 'Circle',  icon: '⭕' },
   { mode: 'custom',  label: 'Custom',  icon: '✏️' },
@@ -19,8 +19,31 @@ const TOOLS: { tool: ToolType; label: string; icon: string }[] = [
   { tool: 'erase',   label: 'Erase',   icon: '✕'  },
 ]
 
+function ShapeModeButton({ mode, label, icon, active, onClick }: { mode: string; label: string; icon: string; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      title={label}
+      onClick={onClick}
+      style={{
+        display: 'flex', alignItems: 'center', gap: '4px',
+        padding: '4px 10px',
+        background: active ? '#0066cc' : '#2a2a2a',
+        color: '#fff',
+        border: `1px solid ${active ? '#0088ff' : '#444'}`,
+        borderRadius: '4px',
+        cursor: 'pointer',
+        fontSize: '12px',
+        fontWeight: active ? 600 : 400,
+      }}
+    >
+      <span>{icon}</span>
+      <span>{label}</span>
+    </button>
+  )
+}
+
 export function Toolbar() {
-  const { activeTool, setActiveTool, activeTerrainType, setActiveTerrainType, terrainDrawMode, setTerrainDrawMode } = useMapTool()
+  const { activeTool, setActiveTool, activeTerrainType, setActiveTerrainType, terrainDrawMode, setTerrainDrawMode, roomDrawMode, setRoomDrawMode } = useMapTool()
   const dispatch = useMapDispatch()
   const { globalGrid } = useMapState()
 
@@ -129,6 +152,26 @@ export function Toolbar() {
         )}
       </div>
 
+      {/* Room shape sub-row */}
+      {activeTool === 'room' && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '8px',
+          padding: '4px 12px 8px', borderTop: '1px solid #333',
+        }}>
+          <span style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Shape:</span>
+          {SHAPE_MODES.map(({ mode, label, icon }) => (
+            <ShapeModeButton
+              key={mode}
+              mode={mode}
+              label={label}
+              icon={icon}
+              active={roomDrawMode === mode}
+              onClick={() => setRoomDrawMode(mode as RoomDrawMode)}
+            />
+          ))}
+        </div>
+      )}
+
       {/* Terrain palette sub-row */}
       {activeTool === 'terrain' && (
         <div style={{
@@ -139,33 +182,20 @@ export function Toolbar() {
           borderTop: '1px solid #333',
           flexWrap: 'wrap',
         }}>
-          {/* Draw mode */}
           <span style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Shape:</span>
-          {DRAW_MODES.map(({ mode, label, icon }) => (
-            <button
+          {SHAPE_MODES.map(({ mode, label, icon }) => (
+            <ShapeModeButton
               key={mode}
-              title={label}
-              onClick={() => setTerrainDrawMode(mode)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: '4px',
-                padding: '4px 10px',
-                background: terrainDrawMode === mode ? '#0066cc' : '#2a2a2a',
-                color: '#fff',
-                border: `1px solid ${terrainDrawMode === mode ? '#0088ff' : '#444'}`,
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontSize: '12px',
-                fontWeight: terrainDrawMode === mode ? 600 : 400,
-              }}
-            >
-              <span>{icon}</span>
-              <span>{label}</span>
-            </button>
+              mode={mode}
+              label={label}
+              icon={icon}
+              active={terrainDrawMode === mode}
+              onClick={() => setTerrainDrawMode(mode as TerrainDrawMode)}
+            />
           ))}
 
           <div style={{ width: '1px', height: '20px', background: '#444', margin: '0 4px' }} />
 
-          {/* Terrain type */}
           <span style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Type:</span>
           {(Object.entries(TERRAIN_PALETTE) as [TerrainType, typeof TERRAIN_PALETTE[TerrainType]][]).map(([key, def]) => (
             <button

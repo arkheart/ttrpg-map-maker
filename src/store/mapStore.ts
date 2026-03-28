@@ -10,6 +10,10 @@ export function loadState(): MapState | undefined {
     if (!parsed.globalGrid) {
       parsed.globalGrid = { enabled: false, size: 32, color: '#ffffff', opacity: 0.15 }
     }
+    // Migrate old rooms that lack shape field
+    if (parsed.rooms) {
+      parsed.rooms = parsed.rooms.map((r: MapRoom) => ('shape' in r ? r : { ...r, shape: 'rect' as const }))
+    }
     return parsed
   } catch {
     return undefined
@@ -30,7 +34,7 @@ type Action =
   | { type: 'ADD_CAVE'; payload: MapCave }
   | { type: 'ADD_TERRAIN'; payload: MapTerrain }
   | { type: 'ADD_ITEM'; payload: MapItem }
-  | { type: 'UPDATE_ROOM'; payload: Partial<MapRoom> & { id: string } }
+  | { type: 'UPDATE_ROOM'; payload: { id: string; x?: number; y?: number; width?: number; height?: number; radiusX?: number; radiusY?: number; points?: number[]; fill?: string; label?: string; grid?: GridSettings | null } }
   | { type: 'UPDATE_CAVE'; payload: Partial<MapCave> & { id: string } }
   | { type: 'UPDATE_TERRAIN'; payload: { id: string; terrainType?: TerrainType; label?: string; x?: number; y?: number; width?: number; height?: number; radiusX?: number; radiusY?: number; points?: number[]; grid?: GridSettings | null } }
   | { type: 'UPDATE_ITEM'; payload: Partial<MapItem> & { id: string } }

@@ -1,5 +1,7 @@
 export type ToolType = 'select' | 'room' | 'cave' | 'terrain' | 'item' | 'erase'
 
+export type RoomDrawMode = 'rect' | 'ellipse' | 'custom'
+
 export type TerrainType = 'forest' | 'grass' | 'mountain' | 'rough' | 'water' | 'sand' | 'swamp' | 'snow'
 
 export interface TerrainDef {
@@ -27,16 +29,10 @@ export interface GridSettings {
   opacity?: number // default 0.15
 }
 
-export interface MapRoom {
-  id: string
-  x: number
-  y: number
-  width: number
-  height: number
-  fill: string
-  label?: string
-  grid?: GridSettings
-}
+export type MapRoom =
+  | { id: string; shape: 'rect';    x: number; y: number; width: number; height: number; fill: string; label?: string; grid?: GridSettings }
+  | { id: string; shape: 'ellipse'; x: number; y: number; radiusX: number; radiusY: number; fill: string; label?: string; grid?: GridSettings }
+  | { id: string; shape: 'custom';  points: number[]; fill: string; label?: string; grid?: GridSettings }
 
 export interface MapCave {
   id: string
