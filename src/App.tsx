@@ -20,6 +20,10 @@ export default function App() {
 
   useEffect(() => {
     saveState(state)
+    if (currentMapId) {
+      saveMapToSlot(currentMapName, state, currentMapId)
+      setSavedMaps(loadSavedMaps())
+    }
   }, [state])
 
   function handleSaveMap(name: string) {
