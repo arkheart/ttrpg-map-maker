@@ -15,9 +15,10 @@ function renderToolbar(props = {}, toolState = {}, mapState = {}) {
 }
 
 describe('Toolbar — tool buttons', () => {
-  it('renders all 6 tool buttons', () => {
+  it('renders all 7 tool buttons', () => {
     renderToolbar()
     expect(screen.getByTitle('Select')).toBeInTheDocument()
+    expect(screen.getByTitle('Edit')).toBeInTheDocument()
     expect(screen.getByTitle('Room')).toBeInTheDocument()
     expect(screen.getByTitle('Cave')).toBeInTheDocument()
     expect(screen.getByTitle('Terrain')).toBeInTheDocument()
@@ -32,9 +33,21 @@ describe('Toolbar — tool buttons', () => {
     expect(setActiveTool).toHaveBeenCalledWith('room')
   })
 
+  it('calls setActiveTool with edit when Edit is clicked', async () => {
+    const setActiveTool = vi.fn()
+    renderToolbar({}, { setActiveTool })
+    await userEvent.click(screen.getByTitle('Edit'))
+    expect(setActiveTool).toHaveBeenCalledWith('edit')
+  })
+
   it('select tool button is active by default', () => {
     renderToolbar()
     expect(screen.getByTitle('Select')).toHaveStyle({ background: '#0066cc' })
+  })
+
+  it('edit tool button is active when edit tool is selected', () => {
+    renderToolbar({}, { activeTool: 'edit' as const })
+    expect(screen.getByTitle('Edit')).toHaveStyle({ background: '#0066cc' })
   })
 })
 

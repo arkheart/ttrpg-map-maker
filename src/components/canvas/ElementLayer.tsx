@@ -139,7 +139,7 @@ function PolyHandles({ points, onLive, onCommit }: {
 
 // Given a flat points array and a click position, find the closest edge
 // and return a new points array with the new vertex spliced in.
-function insertPointOnEdge(points: number[], px: number, py: number): number[] {
+export function insertPointOnEdge(points: number[], px: number, py: number): number[] {
   const n = points.length / 2
   let bestDist = Infinity
   let bestEdge = 0
