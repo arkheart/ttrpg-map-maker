@@ -1,10 +1,8 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useRef, useState, useEffect, useImperativeHandle, forwardRef } from 'react';
 import { Stage } from 'react-konva';
-import { TerrainLayer } from './TerrainLayer';
+import { ElementLayer } from './ElementLayer';
 import { TerrainDrawLayer } from './TerrainDrawLayer';
-import { RoomLayer } from './RoomLayer';
-import { ItemLayer } from './ItemLayer';
 import { CaveDrawLayer, PaintCaveDrawLayer } from './CaveDrawLayer';
 import { GlobalGridLayer } from './GlobalGridLayer';
 import { useMapState, useMapDispatch } from '@/store/mapStore';
@@ -407,7 +405,21 @@ export const MapCanvas = forwardRef(function MapCanvas({ selectedElement, onSele
     // Ellipse preview check — suppress dashed rect overlay when drawing ellipses
     const isEllipseMode = (activeTool === 'room' && roomDrawMode === 'ellipse') ||
         (activeTool === 'terrain' && terrainDrawMode === 'ellipse');
-    return (_jsxs("div", { ref: containerRef, style: { flex: 1, background: '#1a1a1a', overflow: 'hidden', position: 'relative', minWidth: 0, minHeight: 0 }, children: [_jsxs(Stage, { ref: stageRef, width: width, height: height, scaleX: scale, scaleY: scale, x: stagePos.x, y: stagePos.y, onMouseDown: handleMouseDown, onMouseMove: handleMouseMove, onMouseUp: handleMouseUp, onClick: handleClick, onDblClick: handleDblClick, onMouseLeave: handleMouseLeave, onWheel: handleWheel, style: { cursor: ctrlHeld ? (panStart.current ? 'grabbing' : 'grab') : activeTool === 'select' ? 'default' : nearFirst_ ? 'cell' : 'crosshair' }, children: [_jsx(TerrainLayer, { terrain: state.terrain, onSelect: id => handleSelect('terrain', id), selectedId: selectedElement?.type === 'terrain' ? selectedElement.id : null }), _jsx(RoomLayer, { rooms: state.rooms, caves: state.caves, onSelect: id => handleSelect(state.rooms.some(r => r.id === id) ? 'room' : 'cave', id), selectedId: selectedElement?.type === 'room' || selectedElement?.type === 'cave' ? selectedElement.id : null }), _jsx(ItemLayer, { items: state.items, onSelect: id => handleSelect('item', id), selectedId: selectedElement?.type === 'item' ? selectedElement.id : null }), _jsx(GlobalGridLayer, { width: width, height: height, scale: scale, stagePos: stagePos, grid: state.globalGrid }), _jsx(CaveDrawLayer, { points: cavePoints, mousePos: activeTool === 'cave' && caveDrawMode === 'polygon' ? mousePos : null }), _jsx(PaintCaveDrawLayer, { points: activeTool === 'cave' && caveDrawMode === 'paint' ? paintPreview : [] }), _jsx(CaveDrawLayer, { points: roomPoints, mousePos: activeTool === 'room' && roomDrawMode === 'custom' ? mousePos : null, color: "#00aaff" }), _jsx(TerrainDrawLayer, { drawMode: terrainDrawMode, preview: activeTool === 'terrain' ? previewRect : null, points: activeTool === 'terrain' && terrainDrawMode === 'custom' ? terrainPoints : [], mousePos: activeTool === 'terrain' ? mousePos : null }), _jsx(TerrainDrawLayer, { drawMode: roomDrawMode, preview: activeTool === 'room' && (roomDrawMode === 'rect' || roomDrawMode === 'ellipse') ? previewRect : null, points: [], mousePos: null })] }), previewRect && previewRect.w > 2 && previewRect.h > 2 && !isEllipseMode && (_jsx("div", { style: {
+    return (_jsxs("div", { ref: containerRef, style: { flex: 1, background: '#1a1a1a', overflow: 'hidden', position: 'relative', minWidth: 0, minHeight: 0 }, children: [_jsxs(Stage, { ref: stageRef, width: width, height: height, scaleX: scale, scaleY: scale, x: stagePos.x, y: stagePos.y, onMouseDown: handleMouseDown, onMouseMove: handleMouseMove, onMouseUp: handleMouseUp, onClick: handleClick, onDblClick: handleDblClick, onMouseLeave: handleMouseLeave, onWheel: handleWheel, style: { cursor: ctrlHeld ? (panStart.current ? 'grabbing' : 'grab') : activeTool === 'select' ? 'default' : nearFirst_ ? 'cell' : 'crosshair' }, children: [state.layerOrder.map(id => {
+                        const room = state.rooms.find(r => r.id === id);
+                        if (room)
+                            return _jsx(ElementLayer, { element: room, type: "room", isSelected: selectedElement?.id === id, onSelect: () => handleSelect('room', id) }, id);
+                        const cave = state.caves.find(c => c.id === id);
+                        if (cave)
+                            return _jsx(ElementLayer, { element: cave, type: "cave", isSelected: selectedElement?.id === id, onSelect: () => handleSelect('cave', id) }, id);
+                        const terrain = state.terrain.find(t => t.id === id);
+                        if (terrain)
+                            return _jsx(ElementLayer, { element: terrain, type: "terrain", isSelected: selectedElement?.id === id, onSelect: () => handleSelect('terrain', id) }, id);
+                        const item = state.items.find(i => i.id === id);
+                        if (item)
+                            return _jsx(ElementLayer, { element: item, type: "item", isSelected: selectedElement?.id === id, onSelect: () => handleSelect('item', id) }, id);
+                        return null;
+                    }), _jsx(GlobalGridLayer, { width: width, height: height, scale: scale, stagePos: stagePos, grid: state.globalGrid }), _jsx(CaveDrawLayer, { points: cavePoints, mousePos: activeTool === 'cave' && caveDrawMode === 'polygon' ? mousePos : null }), _jsx(PaintCaveDrawLayer, { points: activeTool === 'cave' && caveDrawMode === 'paint' ? paintPreview : [] }), _jsx(CaveDrawLayer, { points: roomPoints, mousePos: activeTool === 'room' && roomDrawMode === 'custom' ? mousePos : null, color: "#00aaff" }), _jsx(TerrainDrawLayer, { drawMode: terrainDrawMode, preview: activeTool === 'terrain' ? previewRect : null, points: activeTool === 'terrain' && terrainDrawMode === 'custom' ? terrainPoints : [], mousePos: activeTool === 'terrain' ? mousePos : null }), _jsx(TerrainDrawLayer, { drawMode: roomDrawMode, preview: activeTool === 'room' && (roomDrawMode === 'rect' || roomDrawMode === 'ellipse') ? previewRect : null, points: [], mousePos: null })] }), previewRect && previewRect.w > 2 && previewRect.h > 2 && !isEllipseMode && (_jsx("div", { style: {
                     position: 'absolute',
                     left: previewRect.x * scale + stagePos.x,
                     top: previewRect.y * scale + stagePos.y,

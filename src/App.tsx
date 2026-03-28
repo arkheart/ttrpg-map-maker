@@ -8,6 +8,7 @@ import { MapToolContext, useMapToolState } from '@/hooks/useMapTool'
 import type { SelectedElement } from '@/types/map'
 import { MapsPanel } from '@/components/maps/MapsPanel'
 import { ObjectsPanel } from '@/components/objects/ObjectsPanel'
+import { DevMenu } from '@/components/dev/DevMenu'
 
 export default function App() {
   const [state, dispatch] = useMapReducer()
@@ -99,6 +100,7 @@ export default function App() {
               )}
             </div>
           </div>
+          <DevMenu onClearAll={handleNewMap} />
         </MapToolContext.Provider>
       </MapDispatchContext.Provider>
     </MapStateContext.Provider>
