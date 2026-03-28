@@ -1,5 +1,5 @@
 import { createContext, useContext, useReducer, Dispatch } from 'react'
-import type { MapState, MapRoom, MapCave, MapTerrain, MapItem } from '@/types/map'
+import type { MapState, MapRoom, MapCave, MapTerrain, MapItem, TerrainType } from '@/types/map'
 
 type Action =
   | { type: 'ADD_ROOM'; payload: MapRoom }
@@ -8,7 +8,7 @@ type Action =
   | { type: 'ADD_ITEM'; payload: MapItem }
   | { type: 'UPDATE_ROOM'; payload: Partial<MapRoom> & { id: string } }
   | { type: 'UPDATE_CAVE'; payload: Partial<MapCave> & { id: string } }
-  | { type: 'UPDATE_TERRAIN'; payload: Partial<MapTerrain> & { id: string } }
+  | { type: 'UPDATE_TERRAIN'; payload: { id: string; terrainType?: TerrainType; label?: string; x?: number; y?: number; width?: number; height?: number; radiusX?: number; radiusY?: number; points?: number[] } }
   | { type: 'UPDATE_ITEM'; payload: Partial<MapItem> & { id: string } }
   | { type: 'DELETE_ELEMENT'; payload: { id: string } }
   | { type: 'CLEAR_ALL' }

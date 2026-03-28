@@ -1,13 +1,6 @@
 import { useMapState, useMapDispatch } from '@/store/mapStore'
-import type { SelectedElement } from '@/types/map'
-
-const TERRAIN_COLORS: { label: string; value: string }[] = [
-  { label: 'Grass', value: '#4a7c4e' },
-  { label: 'Water', value: '#2b5f8a' },
-  { label: 'Stone', value: '#666' },
-  { label: 'Sand', value: '#c2a96e' },
-  { label: 'Dirt', value: '#8b6340' },
-]
+import type { SelectedElement, TerrainType } from '@/types/map'
+import { TERRAIN_PALETTE } from '@/types/map'
 
 const ROOM_COLORS: { label: string; value: string }[] = [
   { label: 'Dark', value: '#3a3a3a' },
@@ -123,23 +116,27 @@ export function PropertiesPanel({ selected }: Props) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         <div>
           <label style={labelStyle}>Terrain Type</label>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-            {TERRAIN_COLORS.map(c => (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            {(Object.entries(TERRAIN_PALETTE) as [TerrainType, typeof TERRAIN_PALETTE[TerrainType]][]).map(([key, def]) => (
               <button
-                key={c.value}
-                title={c.label}
-                onClick={() => dispatch({ type: 'UPDATE_TERRAIN', payload: { id: terrain.id, fill: c.value } })}
+                key={key}
+                onClick={() => dispatch({ type: 'UPDATE_TERRAIN', payload: { id: terrain.id, terrainType: key } })}
                 style={{
-                  padding: '4px 8px',
-                  background: c.value,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '5px 8px',
+                  background: terrain.terrainType === key ? def.fill : '#2a2a2a',
                   color: '#fff',
-                  border: terrain.fill === c.value ? '2px solid #00aaff' : '2px solid #555',
+                  border: `1px solid ${terrain.terrainType === key ? '#00aaff' : '#444'}`,
                   borderRadius: '4px',
                   cursor: 'pointer',
-                  fontSize: '11px',
+                  fontSize: '12px',
+                  textAlign: 'left',
                 }}
               >
-                {c.label}
+                <span>{def.icon}</span>
+                <span>{def.label}</span>
               </button>
             ))}
           </div>

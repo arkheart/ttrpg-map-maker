@@ -29,7 +29,7 @@ export function Sidebar({ selected }: Props) {
           <p>↖ Select — move elements</p>
           <p>⬜ Room — draw dungeon rooms</p>
           <p>🪨 Cave — draw cave shapes</p>
-          <p>🌿 Terrain — place terrain tiles</p>
+          <p>🌿 Terrain — draw terrain (pick type in toolbar)</p>
           <p>📌 Item — place map items</p>
           <p>✕ Erase — click to remove</p>
         </div>
