@@ -106,6 +106,95 @@ export function deleteMapSlot(id: string) {
     localStorage.setItem(MAPS_KEY, JSON.stringify(maps))
   } catch {}
 }
+
+export function exportMapToJson(entry: SavedMapEntry): void {
+  const json = JSON.stringify(entry.state, null, 2)
+  const blob = new Blob([json], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `${entry.name}.json`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+export type ValidationResult =
+  | { ok: true; state: MapState; name: string }
+  | { ok: false; error: string }
+
+export function validateAndImportMapJson(json: string): ValidationResult {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(json)
+  } catch {
+    return { ok: false, error: 'Invalid JSON file.' }
+  }
+
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    return { ok: false, error: 'File must be a JSON object.' }
+  }
+
+  const obj = parsed as Record<string, unknown>
+
+  // Detect if this is a full SavedMapEntry or just a MapState
+  let rawState: unknown
+  let name = 'Imported Map'
+
+  if ('state' in obj && 'name' in obj) {
+    // Full SavedMapEntry
+    rawState = obj.state
+    name = typeof obj.name === 'string' ? obj.name : 'Imported Map'
+  } else if ('rooms' in obj || 'caves' in obj || 'terrain' in obj || 'items' in obj) {
+    // Bare MapState
+    rawState = obj
+  } else {
+    return { ok: false, error: 'Unrecognized format: missing rooms, caves, terrain, or items.' }
+  }
+
+  if (typeof rawState !== 'object' || rawState === null || Array.isArray(rawState)) {
+    return { ok: false, error: 'Map state must be an object.' }
+  }
+
+  const s = rawState as Record<string, unknown>
+
+  if (!Array.isArray(s.rooms)) return { ok: false, error: 'Missing or invalid "rooms" array.' }
+  if (!Array.isArray(s.caves)) return { ok: false, error: 'Missing or invalid "caves" array.' }
+  if (!Array.isArray(s.terrain)) return { ok: false, error: 'Missing or invalid "terrain" array.' }
+  if (!Array.isArray(s.items)) return { ok: false, error: 'Missing or invalid "items" array.' }
+
+  const validTerrainTypes = new Set(['forest', 'grass', 'mountain', 'rough', 'water', 'sand', 'swamp', 'snow'])
+
+  for (const room of s.rooms as unknown[]) {
+    if (typeof room !== 'object' || room === null) return { ok: false, error: 'Invalid room entry.' }
+    const r = room as Record<string, unknown>
+    if (typeof r.id !== 'string') return { ok: false, error: 'Room missing string id.' }
+    if (!['rect', 'ellipse', 'custom'].includes(r.shape as string)) return { ok: false, error: `Room "${r.id}" has invalid shape.` }
+  }
+
+  for (const cave of s.caves as unknown[]) {
+    if (typeof cave !== 'object' || cave === null) return { ok: false, error: 'Invalid cave entry.' }
+    const c = cave as Record<string, unknown>
+    if (typeof c.id !== 'string') return { ok: false, error: 'Cave missing string id.' }
+    if (!Array.isArray(c.points)) return { ok: false, error: `Cave "${c.id}" missing points array.` }
+  }
+
+  for (const t of s.terrain as unknown[]) {
+    if (typeof t !== 'object' || t === null) return { ok: false, error: 'Invalid terrain entry.' }
+    const tr = t as Record<string, unknown>
+    if (typeof tr.id !== 'string') return { ok: false, error: 'Terrain missing string id.' }
+    if (!validTerrainTypes.has(tr.terrainType as string)) return { ok: false, error: `Terrain "${tr.id}" has invalid terrainType.` }
+  }
+
+  for (const item of s.items as unknown[]) {
+    if (typeof item !== 'object' || item === null) return { ok: false, error: 'Invalid item entry.' }
+    const it = item as Record<string, unknown>
+    if (typeof it.id !== 'string') return { ok: false, error: 'Item missing string id.' }
+    if (typeof it.x !== 'number' || typeof it.y !== 'number') return { ok: false, error: `Item "${it.id}" missing x/y coordinates.` }
+  }
+
+  const state = migrateState(rawState as MapState)
+  return { ok: true, state, name }
+}
 import type { MapState, MapRoom, MapCave, MapTerrain, MapItem, TerrainType, GridSettings } from '@/types/map'
 
 type Action =

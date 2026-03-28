@@ -1,10 +1,13 @@
-import type { SavedMapEntry } from '@/store/mapStore'
+import { useRef, useState } from 'react'
+import type { SavedMapEntry, ValidationResult } from '@/store/mapStore'
 
 interface MapsPanelProps {
   maps: SavedMapEntry[]
   currentMapId: string | undefined
   onLoad: (entry: SavedMapEntry) => void
   onDelete: (id: string) => void
+  onExport: (entry: SavedMapEntry) => void
+  onImport: (json: string) => ValidationResult
   onClose: () => void
 }
 
@@ -14,7 +17,40 @@ function formatDate(ts: number) {
     ' ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
 }
 
-export function MapsPanel({ maps, currentMapId, onLoad, onDelete, onClose }: MapsPanelProps) {
+export function MapsPanel({ maps, currentMapId, onLoad, onDelete, onExport, onImport, onClose }: MapsPanelProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [dragging, setDragging] = useState(false)
+  const [importError, setImportError] = useState<string | null>(null)
+
+  function handleFile(file: File) {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const text = e.target?.result
+      if (typeof text === 'string') {
+        const result = onImport(text)
+        if (!result.ok) {
+          setImportError(result.error)
+        } else {
+          setImportError(null)
+        }
+      }
+    }
+    reader.readAsText(file)
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault()
+    setDragging(false)
+    const file = e.dataTransfer.files?.[0]
+    if (file) handleFile(file)
+  }
+
+  function handleFileInput(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (file) handleFile(file)
+    e.target.value = ''
+  }
+
   return (
     <div
       style={{
@@ -39,6 +75,53 @@ export function MapsPanel({ maps, currentMapId, onLoad, onDelete, onClose }: Map
         >
           ✕
         </button>
+      </div>
+
+      {/* Import drop zone */}
+      <div
+        onDrop={handleDrop}
+        onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
+        onDragLeave={() => setDragging(false)}
+        style={{
+          margin: '8px',
+          padding: '10px',
+          border: `2px dashed ${dragging ? '#4a8fff' : '#333'}`,
+          borderRadius: '6px',
+          background: dragging ? '#0a1a2a' : '#181818',
+          textAlign: 'center',
+          transition: 'border-color 0.15s, background 0.15s',
+          flexShrink: 0,
+        }}
+      >
+        <div style={{ fontSize: '11px', color: '#666', marginBottom: '6px' }}>
+          Drop a map JSON file here, or
+        </div>
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          style={{
+            padding: '4px 10px',
+            background: '#1e2e1e',
+            color: '#6c6',
+            border: '1px solid #363',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontSize: '11px',
+          }}
+        >
+          Browse...
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".json,application/json"
+          style={{ display: 'none' }}
+          onChange={handleFileInput}
+        />
+        {importError && (
+          <div style={{ marginTop: '6px', fontSize: '10px', color: '#c66' }}>
+            {importError}
+          </div>
+        )}
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
@@ -87,6 +170,21 @@ export function MapsPanel({ maps, currentMapId, onLoad, onDelete, onClose }: Map
                   }}
                 >
                   Load
+                </button>
+                <button
+                  onClick={() => onExport(entry)}
+                  title="Export map as JSON"
+                  style={{
+                    padding: '3px 8px',
+                    background: '#1e2a1e',
+                    color: '#8c8',
+                    border: '1px solid #363',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '11px',
+                  }}
+                >
+                  Export
                 </button>
                 <button
                   onClick={() => onDelete(entry.id)}

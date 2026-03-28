@@ -2,8 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import { Toolbar } from '@/components/toolbar/Toolbar'
 import { MapCanvas, type MapCanvasHandle } from '@/components/canvas/MapCanvas'
 import { Sidebar } from '@/components/sidebar/Sidebar'
-import { MapStateContext, MapDispatchContext, useMapReducer, saveState, loadSavedMaps, saveMapToSlot, deleteMapSlot, loadCurrentMapMeta, saveCurrentMapMeta } from '@/store/mapStore'
-import type { SavedMapEntry } from '@/store/mapStore'
+import { MapStateContext, MapDispatchContext, useMapReducer, saveState, loadSavedMaps, saveMapToSlot, deleteMapSlot, loadCurrentMapMeta, saveCurrentMapMeta, exportMapToJson, validateAndImportMapJson } from '@/store/mapStore'
+import type { SavedMapEntry, ValidationResult } from '@/store/mapStore'
 import { MapToolContext, useMapToolState } from '@/hooks/useMapTool'
 import type { SelectedElement } from '@/types/map'
 import { MapsPanel } from '@/components/maps/MapsPanel'
@@ -56,6 +56,25 @@ export default function App() {
     }
   }
 
+  function handleExportMap(entry: SavedMapEntry) {
+    exportMapToJson(entry)
+  }
+
+  function handleImportMap(json: string): ValidationResult {
+    const result = validateAndImportMapJson(json)
+    if (result.ok) {
+      const entry = saveMapToSlot(result.name, result.state)
+      setSavedMaps(loadSavedMaps())
+      // Auto-load the imported map
+      dispatch({ type: 'LOAD_STATE', payload: result.state })
+      setCurrentMapId(entry.id)
+      setCurrentMapName(entry.name)
+      saveCurrentMapMeta({ id: entry.id, name: entry.name })
+      setSelectedElement(null)
+    }
+    return result
+  }
+
   function handleNewMap() {
     dispatch({ type: 'CLEAR_ALL' })
     setCurrentMapId(undefined)
@@ -95,6 +114,8 @@ export default function App() {
                   currentMapId={currentMapId}
                   onLoad={handleLoadMap}
                   onDelete={handleDeleteMap}
+                  onExport={handleExportMap}
+                  onImport={handleImportMap}
                   onClose={() => setShowMapsPanel(false)}
                 />
               )}
