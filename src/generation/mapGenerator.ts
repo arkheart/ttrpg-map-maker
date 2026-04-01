@@ -22,118 +22,124 @@ function seededRng(seed: number): () => number {
   }
 }
 
-interface BspRect { x: number; y: number; w: number; h: number }
-interface Room    { x: number; y: number; w: number; h: number }
+interface Room { x: number; y: number; w: number; h: number }
 
-interface BspNode {
-  rect: BspRect
-  left?: BspNode
-  right?: BspNode
-  room?: Room
+// --- Room placement ---
+
+function roomsOverlap(a: Room, b: Room, margin: number): boolean {
+  return (
+    a.x - margin < b.x + b.w &&
+    a.x + a.w + margin > b.x &&
+    a.y - margin < b.y + b.h &&
+    a.y + a.h + margin > b.y
+  )
 }
 
-const MIN_NODE = 120 // minimum node side length before refusing to split
+function placeRooms(
+  count: number,
+  mapW: number,
+  mapH: number,
+  rng: () => number,
+  margin = 20,
+): Room[] {
+  const minW = 80, maxW = 200
+  const minH = 60, maxH = 160
+  const placed: Room[] = []
+  const attempts = count * 40
 
-function splitNode(node: BspNode, depth: number, maxDepth: number, rng: () => number): void {
-  const { rect: r } = node
-  const canH = r.h >= MIN_NODE * 2
-  const canV = r.w >= MIN_NODE * 2
-
-  if (depth >= maxDepth || (!canH && !canV)) {
-    // Leaf — carve a room inside this node with padding
-    const pad = Math.min(15, Math.min(r.w, r.h) * 0.12)
-    const iw = Math.max(40, r.w - pad * 2)
-    const ih = Math.max(40, r.h - pad * 2)
-    const minRW = Math.min(60, iw)
-    const minRH = Math.min(60, ih)
-    const rw = minRW + Math.floor(rng() * Math.max(1, iw - minRW + 1))
-    const rh = minRH + Math.floor(rng() * Math.max(1, ih - minRH + 1))
-    node.room = {
-      x: r.x + pad + Math.floor(rng() * Math.max(1, iw - rw + 1)),
-      y: r.y + pad + Math.floor(rng() * Math.max(1, ih - rh + 1)),
-      w: rw,
-      h: rh,
+  for (let i = 0; i < attempts && placed.length < count; i++) {
+    const w = minW + Math.floor(rng() * (maxW - minW + 1))
+    const h = minH + Math.floor(rng() * (maxH - minH + 1))
+    const x = 50 + Math.floor(rng() * Math.max(1, mapW - w - 50))
+    const y = 50 + Math.floor(rng() * Math.max(1, mapH - h - 50))
+    const candidate = { x, y, w, h }
+    if (!placed.some(p => roomsOverlap(p, candidate, margin))) {
+      placed.push(candidate)
     }
-    return
   }
 
-  // Prefer splitting the longer axis, with some randomness
-  let splitH: boolean
-  if (!canH)       splitH = false
-  else if (!canV)  splitH = true
-  else             splitH = r.h > r.w ? rng() < 0.65 : rng() < 0.35
-
-  if (splitH) {
-    const at = MIN_NODE + Math.floor(rng() * (r.h - MIN_NODE * 2 + 1))
-    node.left  = { rect: { x: r.x, y: r.y,      w: r.w, h: at } }
-    node.right = { rect: { x: r.x, y: r.y + at, w: r.w, h: r.h - at } }
-  } else {
-    const at = MIN_NODE + Math.floor(rng() * (r.w - MIN_NODE * 2 + 1))
-    node.left  = { rect: { x: r.x,      y: r.y, w: at,      h: r.h } }
-    node.right = { rect: { x: r.x + at, y: r.y, w: r.w - at, h: r.h } }
-  }
-
-  splitNode(node.left,  depth + 1, maxDepth, rng)
-  splitNode(node.right, depth + 1, maxDepth, rng)
+  return placed
 }
 
-function getLeaves(node: BspNode): BspNode[] {
-  if (!node.left && !node.right) return [node]
-  return [
-    ...(node.left  ? getLeaves(node.left)  : []),
-    ...(node.right ? getLeaves(node.right) : []),
-  ]
-}
+// --- Minimum spanning tree (Prim's) by center distance ---
 
-// Connect the rightmost leaf of the left subtree to the leftmost leaf of the right subtree.
-// This produces exactly one corridor per BSP split, connecting rooms that are spatially adjacent.
-function rightmostLeaf(node: BspNode): BspNode {
-  if (!node.right) return node
-  return rightmostLeaf(node.right)
-}
-
-function leftmostLeaf(node: BspNode): BspNode {
-  if (!node.left) return node
-  return leftmostLeaf(node.left)
-}
-
-// Walk the BSP tree collecting one connection per split
-function collectConnections(node: BspNode, out: [Room, Room][]): void {
-  if (!node.left || !node.right) return
-  const a = rightmostLeaf(node.left).room
-  const b = leftmostLeaf(node.right).room
-  if (a && b) out.push([a, b])
-  collectConnections(node.left, out)
-  collectConnections(node.right, out)
-}
-
-function center(r: Room): [number, number] {
+function centerOf(r: Room): [number, number] {
   return [r.x + r.w / 2, r.y + r.h / 2]
 }
 
-// Two-segment L-shaped corridor between room centres — returns up to 2 rects
-function lCorridor(a: Room, b: Room, cw: number, rng: () => number): Room[] {
-  const [ax, ay] = center(a)
-  const [bx, by] = center(b)
+function dist2(a: Room, b: Room): number {
+  const [ax, ay] = centerOf(a)
+  const [bx, by] = centerOf(b)
+  return (ax - bx) ** 2 + (ay - by) ** 2
+}
+
+function buildMst(rooms: Room[]): [number, number][] {
+  if (rooms.length < 2) return []
+  const inTree = new Set<number>([0])
+  const edges: [number, number][] = []
+
+  while (inTree.size < rooms.length) {
+    let bestDist = Infinity
+    let bestA = -1, bestB = -1
+    for (const a of inTree) {
+      for (let b = 0; b < rooms.length; b++) {
+        if (inTree.has(b)) continue
+        const d = dist2(rooms[a], rooms[b])
+        if (d < bestDist) { bestDist = d; bestA = a; bestB = b }
+      }
+    }
+    if (bestB === -1) break
+    edges.push([bestA, bestB])
+    inTree.add(bestB)
+  }
+
+  return edges
+}
+
+// --- Corridor generation: wall-to-wall, bend outside both rooms ---
+
+// For two rooms, find the best pair of facing walls and a safe bend point.
+// Returns up to 2 rect segments forming an L-shaped corridor.
+function wallCorridor(a: Room, b: Room, cw: number, rng: () => number): Room[] {
   const hw = Math.floor(cw / 2)
+  const [ax, ay] = centerOf(a)
+  const [bx, by] = centerOf(b)
+
+  // Determine relative position to pick corridor orientation
+  const dx = bx - ax
+  const dy = by - ay
   const segs: Room[] = []
 
-  if (rng() < 0.5) {
-    // Horizontal then vertical
-    const x = Math.min(ax, bx) - hw
-    const w = Math.abs(bx - ax) + cw
-    if (w > 0) segs.push({ x, y: ay - hw, w, h: cw })
-    const y = Math.min(ay, by) - hw
-    const h = Math.abs(by - ay) + cw
-    if (h > 0) segs.push({ x: bx - hw, y, w: cw, h })
+  // Prefer axis with larger separation — with some randomness
+  const useHFirst = Math.abs(dx) > Math.abs(dy) ? rng() < 0.7 : rng() < 0.3
+
+  if (useHFirst) {
+    // Horizontal segment exits a's left or right wall, vertical segment enters b's top or bottom
+    const aWallX = dx > 0 ? a.x + a.w : a.x
+    const bWallY = dy > 0 ? b.y        : b.y + b.h
+    // Bend X is the center of b, clamped so corridor exits a's wall
+    const bendX = bx
+    // Horizontal: from a's wall to bend x, at a's center y
+    const hx1 = Math.min(aWallX, bendX) - hw
+    const hx2 = Math.max(aWallX, bendX) + hw
+    if (hx2 - hx1 > 0) segs.push({ x: hx1, y: ay - hw, w: hx2 - hx1, h: cw })
+    // Vertical: from bend y (a's center y) to b's wall
+    const vy1 = Math.min(ay, bWallY) - hw
+    const vy2 = Math.max(ay, bWallY) + hw
+    if (vy2 - vy1 > 0) segs.push({ x: bx - hw, y: vy1, w: cw, h: vy2 - vy1 })
   } else {
-    // Vertical then horizontal
-    const y = Math.min(ay, by) - hw
-    const h = Math.abs(by - ay) + cw
-    if (h > 0) segs.push({ x: ax - hw, y, w: cw, h })
-    const x = Math.min(ax, bx) - hw
-    const w = Math.abs(bx - ax) + cw
-    if (w > 0) segs.push({ x, y: by - hw, w, h: cw })
+    // Vertical exits a's top or bottom, horizontal enters b's left or right
+    const aWallY = dy > 0 ? a.y + a.h : a.y
+    const bWallX = dx > 0 ? b.x        : b.x + b.w
+    const bendY = by
+    // Vertical: from a's wall to bend y, at a's center x
+    const vy1 = Math.min(aWallY, bendY) - hw
+    const vy2 = Math.max(aWallY, bendY) + hw
+    if (vy2 - vy1 > 0) segs.push({ x: ax - hw, y: vy1, w: cw, h: vy2 - vy1 })
+    // Horizontal: from bend x (a's center x) to b's wall
+    const hx1 = Math.min(ax, bWallX) - hw
+    const hx2 = Math.max(ax, bWallX) + hw
+    if (hx2 - hx1 > 0) segs.push({ x: hx1, y: by - hw, w: hx2 - hx1, h: cw })
   }
 
   return segs
@@ -172,32 +178,24 @@ function organicPoly(room: Room, rng: () => number, jitter = 0.14): number[] {
   return pts
 }
 
-const DUNGEON_ROOM_FILLS  = ['#3a3028', '#2e2a24', '#352e28', '#3d3530', '#2a2622']
-const DUNGEON_CORR_FILL   = '#1e1c18'
-const CAVERN_ROOM_FILLS   = ['#2a2a28', '#222220', '#1e1e1c', '#282826', '#242422']
-const CAVERN_CORR_FILL    = '#1a1a18'
+const DUNGEON_ROOM_FILLS = ['#3a3028', '#2e2a24', '#352e28', '#3d3530', '#2a2622']
+const DUNGEON_CORR_FILL  = '#1e1c18'
+const CAVERN_ROOM_FILLS  = ['#2a2a28', '#222220', '#1e1e1c', '#282826', '#242422']
+const CAVERN_CORR_FILL   = '#1a1a18'
 
 export function generateMap(params: GenerateParams): MapState {
   const { mapWidth, mapHeight, roomCount, style, seed, addGrid } = params
   const rng = seededRng(seed)
 
-  // BSP depth: 2^depth ≈ roomCount
-  const maxDepth = Math.max(2, Math.round(Math.log2(Math.max(4, roomCount))))
+  const placedRooms = placeRooms(roomCount, mapWidth, mapHeight, rng)
+  const mstEdges = buildMst(placedRooms)
 
-  // Generate slightly offset from origin so the map is visible on load
-  const root: BspNode = { rect: { x: 50, y: 50, w: mapWidth, h: mapHeight } }
-  splitNode(root, 0, maxDepth, rng)
-
-  const leaves = getLeaves(root)
-  const connections: [Room, Room][] = []
-  collectConnections(root, connections)
-
-  const rooms: MapRoom[]     = []
-  const caves: MapCave[]     = []
+  const rooms: MapRoom[]      = []
+  const caves: MapCave[]      = []
   const terrain: MapTerrain[] = []
-  const layerOrder: string[] = []
+  const layerOrder: string[]  = []
 
-  const CW = 22 // corridor width in pixels
+  const CW = 22
 
   const gridSettings = addGrid
     ? { enabled: true, size: 32, color: '#ffffff' as const, opacity: 0.1 }
@@ -211,17 +209,15 @@ export function generateMap(params: GenerateParams): MapState {
 
   if (style === 'dungeon') {
     // Corridors first so they render beneath rooms
-    for (const [a, b] of connections) {
-      for (const seg of lCorridor(a, b, CW, rng)) {
+    for (const [ai, bi] of mstEdges) {
+      for (const seg of wallCorridor(placedRooms[ai], placedRooms[bi], CW, rng)) {
         const id = uuid()
         rooms.push({ id, shape: 'rect', x: seg.x, y: seg.y, width: seg.w, height: seg.h, fill: DUNGEON_CORR_FILL })
         layerOrder.push(id)
       }
     }
-    for (const leaf of leaves) {
-      if (!leaf.room) continue
+    for (const r of placedRooms) {
       const id = uuid()
-      const r = leaf.room
       rooms.push({
         id, shape: 'rect',
         x: r.x, y: r.y, width: r.w, height: r.h,
@@ -232,35 +228,30 @@ export function generateMap(params: GenerateParams): MapState {
     }
 
   } else if (style === 'cavern') {
-    // Corridor caves first
-    for (const [a, b] of connections) {
-      for (const seg of lCorridor(a, b, CW + 6, rng)) {
+    for (const [ai, bi] of mstEdges) {
+      for (const seg of wallCorridor(placedRooms[ai], placedRooms[bi], CW + 6, rng)) {
         const id = uuid()
         caves.push({ id, points: organicPoly(seg, rng, 0.08), fill: CAVERN_CORR_FILL })
         layerOrder.push(id)
       }
     }
-    // Room caves on top
-    for (const leaf of leaves) {
-      if (!leaf.room) continue
+    for (const r of placedRooms) {
       const id = uuid()
-      caves.push({ id, points: organicPoly(leaf.room, rng, 0.18), fill: pick(CAVERN_ROOM_FILLS) })
+      caves.push({ id, points: organicPoly(r, rng, 0.18), fill: pick(CAVERN_ROOM_FILLS) })
       layerOrder.push(id)
     }
 
   } else {
     // mixed — rect rooms with terrain patches inside some rooms
-    for (const [a, b] of connections) {
-      for (const seg of lCorridor(a, b, CW, rng)) {
+    for (const [ai, bi] of mstEdges) {
+      for (const seg of wallCorridor(placedRooms[ai], placedRooms[bi], CW, rng)) {
         const id = uuid()
         rooms.push({ id, shape: 'rect', x: seg.x, y: seg.y, width: seg.w, height: seg.h, fill: DUNGEON_CORR_FILL })
         layerOrder.push(id)
       }
     }
-    for (const leaf of leaves) {
-      if (!leaf.room) continue
+    for (const r of placedRooms) {
       const id = uuid()
-      const r = leaf.room
       rooms.push({
         id, shape: 'rect',
         x: r.x, y: r.y, width: r.w, height: r.h,
@@ -272,9 +263,8 @@ export function generateMap(params: GenerateParams): MapState {
 
     // Scatter water / rough patches inside a subset of rooms
     const PATCH_TYPES: TerrainType[] = ['water', 'rough']
-    for (const leaf of leaves) {
-      if (!leaf.room || rng() > 0.4) continue
-      const r = leaf.room
+    for (const r of placedRooms) {
+      if (rng() > 0.4) continue
       const type = PATCH_TYPES[Math.floor(rng() * PATCH_TYPES.length)]
       const pw = Math.floor(r.w * (0.3 + rng() * 0.35))
       const ph = Math.floor(r.h * (0.3 + rng() * 0.35))
