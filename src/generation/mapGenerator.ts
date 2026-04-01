@@ -85,17 +85,23 @@ function getLeaves(node: BspNode): BspNode[] {
   ]
 }
 
-// Get the representative (first leaf) room of a subtree for corridor connections
-function repRoom(node: BspNode): Room | undefined {
-  if (node.room) return node.room
-  return (node.left && repRoom(node.left)) ?? (node.right && repRoom(node.right))
+// Connect the rightmost leaf of the left subtree to the leftmost leaf of the right subtree.
+// This produces exactly one corridor per BSP split, connecting rooms that are spatially adjacent.
+function rightmostLeaf(node: BspNode): BspNode {
+  if (!node.right) return node
+  return rightmostLeaf(node.right)
 }
 
-// Walk the BSP tree collecting one connection per split (parent connects siblings)
+function leftmostLeaf(node: BspNode): BspNode {
+  if (!node.left) return node
+  return leftmostLeaf(node.left)
+}
+
+// Walk the BSP tree collecting one connection per split
 function collectConnections(node: BspNode, out: [Room, Room][]): void {
   if (!node.left || !node.right) return
-  const a = repRoom(node.left)
-  const b = repRoom(node.right)
+  const a = rightmostLeaf(node.left).room
+  const b = leftmostLeaf(node.right).room
   if (a && b) out.push([a, b])
   collectConnections(node.left, out)
   collectConnections(node.right, out)
