@@ -10,6 +10,9 @@ import { MapsPanel } from '@/components/maps/MapsPanel'
 import { ObjectsPanel } from '@/components/objects/ObjectsPanel'
 import { DevMenu } from '@/components/dev/DevMenu'
 import { HelpModal } from '@/components/help/HelpModal'
+import { GenerateModal } from '@/components/generation/GenerateModal'
+import { generateMap } from '@/generation/mapGenerator'
+import type { GenerateParams } from '@/generation/mapGenerator'
 
 export default function App() {
   const [state, dispatch] = useMapReducer()
@@ -22,6 +25,7 @@ export default function App() {
   const [showMapsPanel, setShowMapsPanel] = useState(false)
   const [showObjectsPanel, setShowObjectsPanel] = useState(false)
   const [showHelp, setShowHelp] = useState(false)
+  const [showGenerate, setShowGenerate] = useState(false)
 
   useEffect(() => {
     saveState(state)
@@ -77,6 +81,16 @@ export default function App() {
     return result
   }
 
+  function handleGenerate(params: GenerateParams) {
+    const generated = generateMap(params)
+    dispatch({ type: 'LOAD_STATE', payload: generated })
+    setCurrentMapId(undefined)
+    setCurrentMapName('Untitled Map')
+    saveCurrentMapMeta(undefined)
+    setSelectedElement(null)
+    setShowGenerate(false)
+  }
+
   function handleNewMap() {
     dispatch({ type: 'CLEAR_ALL' })
     setCurrentMapId(undefined)
@@ -96,8 +110,9 @@ export default function App() {
               onSaveMap={handleSaveMap}
               onNewMap={handleNewMap}
               onOpenMaps={() => setShowMapsPanel(v => !v)}
-            onOpenObjects={() => setShowObjectsPanel(v => !v)}
+              onOpenObjects={() => setShowObjectsPanel(v => !v)}
               onOpenHelp={() => setShowHelp(true)}
+              onGenerate={() => setShowGenerate(true)}
               currentMapName={currentMapName}
               currentMapId={currentMapId}
             />
@@ -126,6 +141,12 @@ export default function App() {
           </div>
           <DevMenu onClearAll={handleNewMap} />
           {showHelp && <HelpModal onClose={() => setShowHelp(false)} />}
+          {showGenerate && (
+            <GenerateModal
+              onGenerate={handleGenerate}
+              onClose={() => setShowGenerate(false)}
+            />
+          )}
         </MapToolContext.Provider>
       </MapDispatchContext.Provider>
     </MapStateContext.Provider>

@@ -76,11 +76,12 @@ interface ToolbarProps {
   onOpenMaps?: () => void
   onOpenObjects?: () => void
   onOpenHelp?: () => void
+  onGenerate?: () => void
   currentMapName?: string
   currentMapId?: string
 }
 
-export function Toolbar({ onExportPng, onSaveMap, onNewMap, onOpenMaps, onOpenObjects, onOpenHelp, currentMapName, currentMapId }: ToolbarProps) {
+export function Toolbar({ onExportPng, onSaveMap, onNewMap, onOpenMaps, onOpenObjects, onOpenHelp, onGenerate, currentMapName, currentMapId }: ToolbarProps) {
   const { activeTool, setActiveTool, activeTerrainType, setActiveTerrainType, terrainDrawMode, setTerrainDrawMode, roomDrawMode, setRoomDrawMode, caveDrawMode, setCaveDrawMode } = useMapTool()
   const dispatch = useMapDispatch()
   const { globalGrid } = useMapState()
@@ -240,6 +241,14 @@ export function Toolbar({ onExportPng, onSaveMap, onNewMap, onOpenMaps, onOpenOb
           style={{ padding: '5px 12px', background: '#2a2a1a', color: '#cc9', border: '1px solid #554', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}
         >
           New Map
+        </button>
+
+        <button
+          onClick={onGenerate}
+          title="Auto-generate a map layout"
+          style={{ padding: '5px 12px', background: '#1a2a3a', color: '#7ab', border: '1px solid #2a4a6a', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}
+        >
+          Generate
         </button>
 
         <div style={{ width: '1px', height: '20px', background: '#444', margin: '0 4px' }} />
